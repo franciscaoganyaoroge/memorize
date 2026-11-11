@@ -212,7 +212,7 @@
 
     <div class="card" id="gamesCard">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:14px">
-        <div style="flex:1"><h2 class="label">Games</h2><div class="daytag" id="streakLine">Seven ways to practice your verses and have fun doing it.</div></div>
+        <div style="flex:1"><h2 class="label">Games</h2><div class="daytag" id="streakLine">Eight ways to practice and have fun doing it.</div></div>
         <button class="primary" onclick="openGames()">Play</button>
       </div>
     </div>
@@ -1051,7 +1051,7 @@ function streakCount(){
 function updateStreakLine(){
   renderGreet();
   const el=document.getElementById("streakLine"); if(!el) return; const n=streakCount();
-  el.innerHTML = n ? `🔥 <b>${n}-day streak</b>${practiceDays().has(dayKey(0))?"":" · practice today to keep it going"}` : "Seven ways to practice your verses and have fun doing it.";
+  el.innerHTML = n ? `🔥 <b>${n}-day streak</b>${practiceDays().has(dayKey(0))?"":" · practice today to keep it going"}` : "Eight ways to practice and have fun doing it.";
 }
 function streakHTML(){
   const d=practiceDays(), n=streakCount(), today=practiceDays().has(dayKey(0));
@@ -1067,6 +1067,7 @@ const GAMES = [
   ["missing","❓","Missing Word","Pick the word that fills the gap. 10 rounds."],
   ["match","🃏","Match-Up","Drag each reference onto its verse."],
   ["clock","⏱️","Beat the Clock","Type first letters fast. Beat your best time."],
+  ["story","🛤️","Bible Story Path","Learn the order of the books through the story."],
   ["books","📚","Books of the Bible","Put the books in the right order."],
   ["where","📍","Where Is It Found?","See a verse, name its book, chapter and verse."],
 ];
@@ -1094,8 +1095,8 @@ function versePicker(onchange){
 function startGame(id){
   document.getElementById("gamesBack").textContent="← Games"; window.scrollTo(0,0);
   if(id==="where"){ quizFromGames=true; gamesView.classList.add("hidden"); startQuiz(); return; }
-  if(id!=="books" && !gameVerses().length){ document.getElementById("gameArea").innerHTML=`<p class="hint">Add a verse first, then come back to play.</p>`; G={}; return; }
-  ({builder:gBuilder, missing:gMissing, match:gMatch, clock:gClock, books:gBooks})[id]();
+  if(id!=="books" && id!=="story" && !gameVerses().length){ document.getElementById("gameArea").innerHTML=`<p class="hint">Add a verse first, then come back to play.</p>`; G={}; return; }
+  ({builder:gBuilder, missing:gMissing, match:gMatch, clock:gClock, books:gBooks, story:gStory})[id]();
 }
 const gArea = () => document.getElementById("gameArea");
 function stars(n){ return "★".repeat(n)+"☆".repeat(3-n); }
@@ -1104,6 +1105,50 @@ function finishCard(title, line, nStars, againFn){
   return `<div class="result" style="text-align:center"><div class="bigstars">${stars(nStars)}</div><b>${title}</b><br>${nStars>=2?cheer():""}${line}
     <div class="row" style="margin-top:12px;justify-content:center"><button class="primary" onclick="${againFn}">Play again</button><button onclick="renderGameHub()">Other games</button></div></div>`;
 }
+
+const STORY = ["God creates the world. Later, Abraham's family grows, and Joseph brings them to live in Egypt.", "A new Pharaoh enslaves Joseph's people. God sends Moses to lead them out, then gives the law and the tabernacle.", "Camped at Mount Sinai, God teaches the priests (the Levites) how to worship and offer sacrifices.", "The people are counted, then wander in the wilderness for 40 years because of unbelief.", "At the edge of the Promised Land, Moses repeats the law to a new generation, then dies.", "Moses's helper leads Israel across the Jordan, conquers Canaan and divides the land among the tribes.", "After Joshua dies, Israel keeps turning from God, and leaders like Deborah, Gideon and Samson rescue them.", "In the days of the judges, a widow from Moab stays loyal to Naomi and becomes King David's great-grandmother.", "The prophet Samuel anoints Israel's first king, Saul, and later the shepherd boy David, who defeats Goliath.", "David reigns as king over all Israel, with great victories and painful family troubles.", "David dies, Solomon builds the temple, and then the kingdom splits into Israel (north) and Judah (south).", "The kings drift into idols: Israel falls to Assyria, then Judah is carried away to Babylon.", "The history is told again from the priests' point of view, starting with family lists and King David.", "Judah's kings are retold from Solomon to the exile, ending with King Cyrus letting the Jews go home.", "The exiles return from Babylon and rebuild the temple.", "The Persian king's cupbearer returns to rebuild Jerusalem's walls, despite fierce opposition.", "Meanwhile in Persia, a Jewish orphan becomes queen and saves her people from destruction.", "The poetry books begin: a righteous man loses everything, wrestles with suffering, and meets God.", "Israel's songbook of praise, lament and prayer, many of the songs written by David.", "Short, wise sayings for everyday life, mostly from King Solomon.", "The Teacher finds that life 'under the sun' is meaningless without God.", "A poem of love between a bride and her beloved.", "The prophets begin: Isaiah warns Judah and foretells the coming Messiah and His kingdom.", "The 'weeping prophet' warns Judah that Babylon is coming to capture them.", "Jeremiah grieves after Babylon destroys Jerusalem and the temple.", "A priest living in exile in Babylon brings warning and hope, including the valley of dry bones.", "Taken to Babylon as a young man, he stays faithful to God, survives the lions' den, and sees visions of the future.", "The 12 Minor Prophets begin: God tells a prophet to marry unfaithful Gomer, a picture of His love for unfaithful Israel.", "A locust plague warns of the Day of the Lord, and God promises to pour out His Spirit on all people.", "A shepherd from Judah preaches justice to wealthy, comfortable northern Israel.", "The shortest book in the Old Testament: judgment on the nation of Edom.", "A prophet runs from God, is swallowed by a great fish, then preaches to Nineveh.", "Foretells the Messiah's birth in Bethlehem: do justly, love mercy, walk humbly with your God.", "Announces the fall of Nineveh, the capital of Assyria.", "A prophet questions God about the Babylonians and learns that 'the just shall live by faith.'", "Warns Judah of the Day of the Lord, yet promises God will rejoice over His people with singing.", "After the exile, he urges the returned Jews to finish rebuilding the temple.", "He also encourages the temple builders, with visions of the coming King riding on a donkey.", "The last Old Testament prophet: return to God, bring your tithes, and Elijah will come before the Lord.", "The New Testament opens: Jesus is the promised King, from the line of Abraham and David.", "The shortest, fastest-moving Gospel: Jesus the servant in action.", "A doctor's careful account of Jesus's life, with the Christmas story and many parables.", "Written 'that you may believe': Jesus's signs and His 'I am' sayings.", "The Holy Spirit comes at Pentecost, and the church spreads from Jerusalem all the way to Rome.", "Paul's letters begin: we are made right with God by faith in Christ.", "Paul corrects a divided church in Corinth. It includes the great love chapter.", "Paul's second letter to Corinth: God's power is made perfect in weakness.", "We are made right by faith, not by keeping the law. The fruit of the Spirit.", "Saved by grace through faith. Put on the whole armor of God.", "A joyful letter from prison: 'I can do all things through Christ.'", "Christ is supreme over all creation. Set your minds on things above.", "Encouragement to a young church about Jesus's return.", "Paul clears up confusion: the Day of the Lord has not already come.", "Paul guides the young pastor Timothy on leading the church.", "Paul's last letter before his death: 'I have fought the good fight.'", "Instructions to Paul's helper on the island of Crete for appointing church leaders.", "Paul asks a master to welcome back his runaway slave Onesimus as a brother.", "The general letters begin: Jesus is greater than angels, Moses and the priests. The 'hall of faith.'", "Faith without works is dead. Tame your tongue.", "Hope for Christians who are suffering for their faith.", "Grow in grace, and beware of false teachers.", "God is love, and you can know that you have eternal life.", "A short letter to 'the elect lady': walk in truth and love.", "A short note praising Gaius for welcoming traveling believers.", "Contend for the faith against deceivers.", "John's vision on Patmos: Jesus wins, and God makes all things new."];
+
+const STORY_SECTIONS = [
+  ["Whole Bible", 0, 65], ["The Law (Genesis–Deuteronomy)", 0, 4], ["History (Joshua–Esther)", 5, 16], ["Poetry (Job–Song)", 17, 21],
+  ["Major Prophets (Isaiah–Daniel)", 22, 26], ["Minor Prophets (Hosea–Malachi)", 27, 38], ["Gospels & Acts", 39, 43], ["Paul's letters (Romans–Philemon)", 44, 56], ["Hebrews–Revelation", 57, 65]
+];
+function gStory(){
+  G={id:"story", phase:"pick"};
+  gArea().innerHTML = `<h2 class="label">🛤️ Bible Story Path</h2>
+    <p class="hint">Walk through the Bible in order. Each clue tells the next part of the story: pick the book it comes from.</p>
+    <div class="tiles" style="flex-direction:column">${STORY_SECTIONS.map((x,i)=>`<button style="text-align:left" onclick="startStory(${i})">${esc(x[0])}</button>`).join("")}</div>
+    <button style="margin-top:14px" onclick="readStory()">📖 Read the whole story first</button>
+    <p class="hint" style="margin-top:14px;font-size:.92rem">Clues are written for this app, checked against the book summaries on Blue Letter Bible (blueletterbible.org).</p>`;
+}
+function readStory(){
+  G={id:"story", phase:"read"};
+  const groups=STORY_SECTIONS.slice(1);
+  gArea().innerHTML = `<h2 class="label">📖 The story of the Bible</h2>` + groups.map(([n,a,b])=>`<div class="stage" style="margin:16px 0 4px">${esc(n)}</div>` +
+    BOOKS.slice(a,b+1).map((bk,k)=>`<div class="verse-item" style="display:block;padding:8px 0"><div class="ref" style="font-size:1.05rem">${a+k+1}. ${esc(bk==="Psalm"?"Psalms":bk)}</div><div class="hint" style="margin:2px 0 0">${esc(STORY[a+k])}</div></div>`).join("")).join("") +
+    `<div class="row" style="margin-top:14px"><button class="primary" onclick="gStory()">Play the game</button></div>`;
+}
+function startStory(si){
+  const [name,a,b]=STORY_SECTIONS[si];
+  G={id:"story", phase:"play", si, name, a, b, i:a, score:0, picked:null};
+  storyStep();
+}
+const bookName = i => BOOKS[i]==="Psalm" ? "Psalms" : BOOKS[i];
+function storyStep(){
+  const g=G;
+  if(g.i>g.b){ const n=g.b-g.a+1; gArea().innerHTML=`<h2 class="label">🛤️ Bible Story Path</h2>`+finishCard(`${g.score} of ${n} on the first try`, `You walked through ${esc(g.name)}.`, g.score===n?3:g.score>=n*.7?2:1, `startStory(${g.si})`); return; }
+  if(!g.choices){
+    const near=[-3,-2,-1,1,2,3].map(d=>g.i+d).filter(k=>k>=0&&k<66); const pick=shuffle(near).slice(0,3);
+    g.choices=shuffle([g.i,...pick]); g.first=true;
+  }
+  const n=g.b-g.a+1, step=g.i-g.a+1;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🛤️ Story Path</h2><span class="stat">${step}/${n} · ${g.score} ✓</span></div>
+    <div class="stage" style="margin-bottom:4px">${esc(g.name)}</div>
+    <div class="wverse">${esc(STORY[g.i])}</div>
+    <div class="choices">${g.choices.map(k=>{ let c=""; if(g.picked!=null){ if(k===g.i) c="right"; else if(k===g.picked) c="wrong"; } return `<button class="${c}" ${g.picked!=null?"disabled":""} onclick="pickStory(${k})">${esc(bookName(k))}</button>`; }).join("")}</div>
+    ${g.picked!=null ? `<p class="hint">${g.picked===g.i?"✓ ":"It's "}<b>${esc(bookName(g.i))}</b>, book ${g.i+1} of 66.${g.i<g.b?" What happens next…":""}</p>
+      <button class="primary" onclick="G.i++;G.picked=null;G.choices=null;storyStep()">${g.i<g.b?"Next →":"See score"}</button>` : ""}`;
+}
+function pickStory(k){ const g=G; g.picked=k; if(k===g.i) g.score++; storyStep(); }
 
 /* ---- 1. Verse Builder ---- */
 function chunkWords(text){

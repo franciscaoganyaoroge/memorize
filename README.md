@@ -17,7 +17,7 @@ No login, no app. It works in the browser on any phone or computer.
   4. **Test.** Type the first letter of each word from memory.
   5. **Where?** Name the book, chapter and verse.
 - **"Where is it found?" quiz.** A mixed quiz across all your verses to learn their references.
-- **Games.** Verse Builder, Missing Word, Match-Up, Beat the Clock, Books of the Bible and Where Is It Found, with a daily practice streak.
+- **Games.** Verse Builder, Missing Word, Match-Up, Beat the Clock, Bible Story Path, Books of the Bible and Where Is It Found, with a daily practice streak.
 - **Weekly review.** A test on every verse from the past 7 days, with a weekly streak.
 - **Study notes.** Write what each verse means to you.
 - **WhatsApp status pictures.** Turn any verse into 4 status pictures (read, fill in the blanks, first letters, say it from memory) so friends can learn it just by tapping through your status.

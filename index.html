@@ -244,6 +244,17 @@
       <div id="ohList" style="margin-top:8px"></div>
     </div>
 
+    <div class="card" id="backupCard">
+      <h2 class="label">Backup &amp; restore</h2>
+      <div class="daytag">Your verses, notes, scores and streak are saved on this phone only. Make a backup before you change phones.</div>
+      <div class="row" style="margin-top:12px">
+        <button class="primary" onclick="makeBackup()">Save a backup</button>
+        <button onclick="document.getElementById('restoreIn').click()">Restore from backup</button>
+        <input type="file" id="restoreIn" accept=".json,application/json" class="hidden" onchange="restoreBackup(this)">
+      </div>
+      <p class="hint" id="backupMsg" style="margin-top:10px">On iPhone, choose <b>Save to Files</b> (iCloud Drive), or send it to yourself on WhatsApp. On your new phone, open this page and tap <b>Restore from backup</b>.</p>
+    </div>
+
     <div class="card">
       <h2 class="label">How it works</h2>
       <ol class="steps">
@@ -1075,6 +1086,50 @@ function tapBook(k){
 }
 
 updateStreakLine();
+
+
+/* ---------- backup & restore ---------- */
+function backupData(){
+  let days=[]; try{ days=JSON.parse(localStorage.getItem(STREAK_KEY)||"[]"); }catch(e){}
+  return {app:"memorize-open-heavens", version:1, saved:new Date().toISOString(), verses, days};
+}
+async function makeBackup(){
+  const msg=document.getElementById("backupMsg");
+  const name=`memory-verses-backup-${dayKey(0)}.json`, text=JSON.stringify(backupData(),null,1);
+  try{
+    if(DL){ await DL.save({filename:name, data:text}); msg.innerHTML="Backup saved ✓ Keep it somewhere safe, like iCloud Drive."; return; }
+    const file=new File([text], name, {type:"application/json"});
+    if(navigator.canShare && navigator.canShare({files:[file]})){ await navigator.share({files:[file]}); msg.innerHTML="Backup ready ✓ Make sure you chose <b>Save to Files</b> or sent it somewhere you can find it."; return; }
+    const a=document.createElement("a"); a.href=URL.createObjectURL(file); a.download=name; document.body.appendChild(a); a.click(); a.remove();
+    msg.innerHTML="Backup downloaded ✓ Look for it in your Downloads.";
+  }catch(e){ if(e && (e.name==="AbortError"||e.code==="declined")) return; msg.textContent="Couldn't save the backup here. Try again, or open the page in Safari or Chrome."; }
+}
+function restoreBackup(input){
+  const f=input.files && input.files[0], msg=document.getElementById("backupMsg"); input.value=""; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{
+    let data; try{ data=JSON.parse(r.result); }catch(e){ msg.textContent="That file isn't a backup from this page."; return; }
+    if(!data || data.app!=="memorize-open-heavens" || !Array.isArray(data.verses)){ msg.textContent="That file isn't a backup from this page."; return; }
+    let added=0, updated=0;
+    for(const b of data.verses){
+      if(!b || !b.ref || !b.text) continue;
+      const m=verses.find(v=>v.ref===b.ref && (v.day||"")===(b.day||""));
+      if(!m){ verses.push({...b, id:Date.now()+Math.floor(Math.random()*1e6)}); added++; continue; }
+      // keep the best of both
+      m.best=Math.max(m.best??-1, b.best??-1); if(m.best<0) m.best=null;
+      m.refBest=Math.max(m.refBest??-1, b.refBest??-1); if(m.refBest<0) m.refBest=null;
+      if(b.bestTime && (!m.bestTime || b.bestTime<m.bestTime)) m.bestTime=b.bestTime;
+      if(b.notes && !(m.notes||"").includes(b.notes)) m.notes = m.notes ? m.notes+"\n\n"+b.notes : b.notes;
+      m.tries=Math.max(m.tries||0, b.tries||0); updated++;
+    }
+    // remove untouched starter verses only if the backup brought real ones
+    persist();
+    try{ const d=new Set([...practiceDays(), ...(data.days||[])]); localStorage.setItem(STREAK_KEY, JSON.stringify([...d].sort().slice(-400))); }catch(e){}
+    updateStreakLine(); renderList();
+    msg.innerHTML=`Restored ✓ ${added} verse${added===1?"":"s"} added${updated?`, ${updated} merged`:""}. Your notes, scores and streak are back.`;
+  };
+  r.readAsText(f);
+}
 
 /* ---------- Bible picker ---------- */
 const PASTE = {NKJV:"New King James Version", NIV:"New International Version", ESV:"English Standard Version", AMP:"Amplified Bible", TPT:"The Passion Translation"};

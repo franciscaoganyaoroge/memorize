@@ -1,0 +1,786 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Memorize Today's Open Heavens with Francisca</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&family=Jost:wght@400;500;600&family=Pinyon+Script&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --night:#1b2540; --night2:#25335a; --gold:#b97a22; --gold-l:#f0c46a; --parch:#fbf4e6; --parch2:#f3e8d2;
+    --ink:#23222a; --muted:#6d6555; --rule:#d8c49c; --good:#3d7a52; --bad:#a8432f; --hidden:#e6d8bb;
+    --bg:#fbf4e6; --line:#d8c49c; --accent:#1b2540; --accent-soft:#f3e8d2;
+  }
+  *{box-sizing:border-box}
+  html{background:#fbf3e6}
+  .bg{position:fixed;inset:0;z-index:-1;background:#fbf3e6 url(bg.jpg) center/cover no-repeat}
+  body{margin:0;color:var(--ink);font-family:Jost,system-ui,sans-serif;font-size:16px;line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:620px;margin:0 auto;padding:calc(17vh) 18px 32vh}
+
+  /* masthead */
+  .mast{text-align:center;margin:0 0 26px;text-shadow:0 0 10px #fff7ea,0 0 22px #fff7ea,0 0 30px #fff7ea}
+  .mast .orn{color:var(--gold);letter-spacing:.6em;font-size:.8rem;margin-left:.6em}
+  .mast h1{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:2.35rem;line-height:1.02;margin:6px 0 0;color:var(--night);letter-spacing:-.01em}
+  .mast h1 em{font-style:italic;font-weight:500}
+  .mast .script{font-family:'Pinyon Script',cursive;font-size:2.1rem;color:var(--gold);line-height:1;margin-top:2px}
+  .mast .sub{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.08rem;color:#4b4436;margin:8px 0 0}
+
+  /* leaves (panels) */
+  .card{position:relative;background:rgba(251,244,230,.94);border:1px solid var(--rule);border-radius:3px;padding:20px 18px;margin-bottom:18px;
+        box-shadow:inset 0 0 0 4px rgba(251,244,230,.94),inset 0 0 0 5px rgba(216,196,156,.6),0 10px 30px -18px rgba(27,37,64,.45)}
+  .label{font-family:Jost,sans-serif;font-weight:500;font-size:.72rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin:0 0 2px;display:flex;align-items:center;gap:10px}
+  .label::after{content:"";flex:1;height:1px;background:var(--rule)}
+  .daytag{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:.98rem;color:var(--muted)}
+
+  /* buttons */
+  button{font-family:Jost,sans-serif;font-size:.78rem;font-weight:500;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;border-radius:2px;
+         border:1px solid var(--night);background:transparent;color:var(--night);padding:11px 16px;min-height:44px;transition:background .15s,color .15s}
+  button:hover{background:rgba(27,37,64,.06)}
+  button.primary{background:var(--night);color:var(--parch);border-color:var(--night)}
+  button.primary:hover{background:var(--night2)}
+  button.ghost{border-color:transparent;color:var(--muted);letter-spacing:.1em}
+  .back{color:var(--night)!important;font-weight:600;text-shadow:0 0 8px #fff7ea,0 0 16px #fff7ea,0 0 24px #fff7ea}
+  button:disabled{opacity:.4;cursor:default}
+
+  input,textarea,select{font:inherit;font-family:Jost,sans-serif;width:100%;padding:10px 12px;border-radius:2px;border:1px solid var(--rule);background:#fffaf0;color:var(--ink);min-height:44px}
+  input:focus,textarea:focus,select:focus{outline:none;border-color:var(--gold);box-shadow:0 0 0 3px rgba(185,122,34,.15)}
+  textarea{min-height:110px;resize:vertical;font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+  label{display:block;font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);margin:12px 0 5px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+  /* lists */
+  .verse-item{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px 0;border-top:1px solid rgba(216,196,156,.7)}
+  .verse-item:first-child{border-top:none}
+  .verse-item .ref{font-family:'Cormorant Garamond',serif;font-weight:600;font-size:1.22rem;color:var(--night);line-height:1.2}
+  .verse-item .preview{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--muted);font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:260px}
+  .verse-item button{padding:9px 12px;font-size:.7rem}
+  .badge{font-size:.66rem;letter-spacing:.08em;padding:2px 7px;border:1px solid var(--rule);border-radius:2px;color:var(--gold);white-space:nowrap;background:#fffaf0}
+
+  /* practice */
+  .tabs{display:flex;gap:0;margin:-4px -4px 16px;border-bottom:1px solid var(--rule)}
+  .tabs button{flex:1 1 0;min-width:0;white-space:nowrap;font-size:.66rem;letter-spacing:.12em;padding:12px 2px;border:none;border-bottom:2px solid transparent;margin-bottom:-1px;color:var(--muted);min-height:40px}
+  .tabs button:hover{background:transparent;color:var(--night)}
+  .tabs button.on{color:var(--night);border-bottom-color:var(--gold);font-weight:600}
+  .verse{font-family:'Cormorant Garamond',serif;font-size:1.55rem;line-height:1.75;margin:6px 0 14px;color:var(--ink)}
+  .ref-big{font-family:Jost,sans-serif;font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold);margin-bottom:4px}
+  .w{display:inline;border-radius:2px;transition:background .15s}
+  .w.hide{background:var(--hidden);color:transparent;cursor:pointer;user-select:none;box-shadow:inset 0 -2px 0 var(--rule)}
+  .w.peek{background:#f6e3b8}
+  .w.done{color:var(--ink)}
+  .w.miss{color:var(--bad)}
+  .w.todo{color:transparent;border-bottom:2px solid var(--rule)}
+  .w.current{border-bottom-color:var(--gold)}
+  .hint{font-family:'Cormorant Garamond',serif;color:var(--muted);font-size:1.05rem;line-height:1.45;margin:4px 0 12px}
+  .hint b{color:var(--ink);font-weight:600}
+  .stage{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .result{padding:14px 16px;border-left:3px solid var(--gold);background:var(--parch2);margin-top:14px;font-family:'Cormorant Garamond',serif;font-size:1.1rem}
+  .result b{font-family:Jost,sans-serif;font-size:.8rem;letter-spacing:.14em;text-transform:uppercase;color:var(--night)}
+  .shake{animation:shake .25s}
+  @keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+  #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
+  .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
+  .hidden{display:none}
+  a.btnlink{display:inline-flex;align-items:center;min-height:44px;padding:11px 16px;border-radius:2px;background:#1f7a4d;color:#fff;text-decoration:none;font-family:Jost,sans-serif;font-size:.74rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
+  .tshare{margin-top:14px}
+  .today a.btnlink{color:#fff!important}
+  .today .tshare button{border-color:rgba(240,196,106,.6);color:var(--gold-l)}
+  .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:60;background:var(--night);color:#fbf2e0;padding:12px 18px;border-radius:3px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);font-size:.95rem;max-width:90vw;border:1px solid rgba(240,196,106,.5)}
+  .simgs{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+  .simgs figure{margin:0}
+  .simgs img{width:100%;display:block;border:1px solid var(--rule);box-shadow:0 8px 20px -12px rgba(27,37,64,.5);-webkit-touch-callout:default}
+  .simgs figcaption{font-size:.66rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold);margin-top:6px;text-align:center}
+  #fullShot{position:fixed;inset:0;z-index:50;background:#000;display:flex;align-items:center;justify-content:center}
+  #fullShot.hidden{display:none}
+  #fullShot img{max-width:100%;max-height:100%;object-fit:contain}
+  .choices{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+  .choices button{font-family:'Cormorant Garamond',serif;font-size:1.15rem;letter-spacing:0;text-transform:none;font-weight:600;border-color:var(--rule);background:#fffaf0}
+  .choices button:disabled{opacity:1;color:var(--muted)}
+  .choices button.right{background:var(--good);border-color:var(--good);color:#fff}
+  .choices button.wrong{background:var(--bad);border-color:var(--bad);color:#fff}
+  .nums{display:flex;align-items:center;gap:8px;margin:10px 0}
+  .nums input{width:84px;text-align:center;font-family:'Cormorant Garamond',serif;font-size:1.5rem;font-weight:600}
+  .wverse{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.4rem;line-height:1.6;margin:4px 0 16px;color:var(--ink)}
+  .card b{font-weight:600}
+
+  /* today: a night-sky leaf */
+  .today{background:linear-gradient(160deg,#1b2540 0%,#24345e 70%,#3b3f63 100%);border-color:#0f1529;color:#f4ead6;
+         box-shadow:inset 0 0 0 4px #1d2845,inset 0 0 0 5px rgba(240,196,106,.45),0 16px 36px -18px rgba(27,37,64,.8)}
+  .today .date{font-size:.7rem;letter-spacing:.22em;text-transform:uppercase;color:var(--gold-l);display:flex;align-items:center;gap:10px}
+  .today .date::after{content:"";flex:1;height:1px;background:rgba(240,196,106,.35)}
+  .today .tverse{font-family:'Cormorant Garamond',serif;font-style:italic;font-size:1.5rem;line-height:1.5;margin:12px 0 14px;color:#fbf2e0}
+  .today .tverse::first-letter{font-style:normal;font-weight:600;font-size:3.4em;float:left;line-height:.82;margin:.06em .08em 0 0;color:var(--gold-l)}
+  .today .tref{font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--gold-l)}
+  .today .ttitle{font-family:'Cormorant Garamond',serif;font-size:1.6rem;margin:10px 0 2px;color:#fbf2e0}
+  .today .hint{color:#c9c2b3}
+  .today button.primary{background:var(--gold-l);border-color:var(--gold-l);color:var(--night);font-weight:600}
+  .today button.primary:hover{background:#f6d48d}
+  .today .badge{background:transparent;border-color:rgba(240,196,106,.5);color:var(--gold-l)}
+  .today a{color:var(--gold-l)!important}
+  .yest{margin-top:16px;padding-top:12px;border-top:1px solid rgba(240,196,106,.3);font-family:'Cormorant Garamond',serif;font-size:1.08rem;color:#e3d9c6}
+  .yest b{font-family:Jost,sans-serif;font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:#c9c2b3;display:block;margin-bottom:2px;font-weight:500}
+
+  .pick{display:grid;grid-template-columns:1fr 1fr;gap:0 10px;margin-top:6px}
+  .pick .two{display:grid;grid-template-columns:1fr 1fr;gap:0 8px}
+  .steps{margin:8px 0 0;padding-left:26px;list-style:upper-roman;font-family:'Cormorant Garamond',serif;font-size:1.08rem;color:var(--ink)}
+  .steps li{margin:4px 0;padding-left:4px}
+  .steps li::marker{color:var(--gold);font-weight:600}
+  .steps b{color:var(--night)}
+  #pLink{font-family:Jost,sans-serif;font-size:.78rem;letter-spacing:.1em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<div class="bg"></div>
+<div class="wrap">
+
+  <!-- LIST VIEW -->
+  <div id="listView">
+    <header class="mast">
+      <div class="orn">✦ ✦ ✦</div>
+      <h1>Memorize Today's<br><em>Open Heavens</em></h1>
+      <div class="script">with Francisca</div>
+      <p class="sub">Hide God's word in your heart, one verse at a time.</p>
+    </header>
+
+    <div class="card today" id="todayCard"></div>
+
+    <div class="card" id="quizCard">
+      <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:14px">
+        <div style="flex:1"><h2 class="label">Where is it found?</h2><div class="daytag">See a verse and name the book, chapter and verse. Uses all your verses, mixed up.</div></div>
+        <button class="primary" onclick="startQuiz()">Start</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between">
+        <div style="flex:1;min-width:200px"><h2 class="label">My personal study</h2><div class="daytag">Verses you choose to learn on your own</div></div>
+        <button class="primary" onclick="showAdd(false)">+ Add verse</button>
+      </div>
+      <div id="addForm" class="hidden">
+        <div id="addTitle" class="label" style="margin-top:16px"></div>
+        <div class="pick">
+          <div><label for="pVer">Version</label>
+            <select id="pVer">
+              <option value="NKJV">NKJV – New King James</option>
+              <option value="KJV">KJV – King James</option>
+              <option value="NHEB">NHEB – New Heart English</option>
+              <option value="ASV">ASV – American Standard</option>
+              <option value="BBE">BBE – Basic English</option>
+              <option value="YLT">YLT – Young's Literal</option>
+            </select></div>
+          <div><label for="pBook">Book</label><select id="pBook"></select></div>
+          <div><label for="pCh">Chapter</label><select id="pCh"></select></div>
+          <div class="two">
+            <div><label for="pFrom">Verse</label><select id="pFrom"></select></div>
+            <div><label for="pTo">to</label><select id="pTo"></select></div>
+          </div>
+        </div>
+        <p class="hint" id="pStatus" style="margin-top:8px"></p>
+        <a id="pLink" class="hidden" target="_blank" rel="noopener" style="display:inline-block;margin-bottom:4px;color:var(--accent);font-weight:600"></a>
+        <label for="refIn">Reference</label>
+        <input id="refIn" placeholder="e.g. Romans 8:28">
+        <label for="textIn">Verse text (fills in by itself; you can edit it or paste a different version)</label>
+        <textarea id="textIn" placeholder="And we know that all things work together for good…"></textarea>
+        <div class="row" style="margin-top:10px">
+          <button class="primary" onclick="saveVerse()">Save</button>
+          <button class="ghost" onclick="hideAdd()">Cancel</button>
+        </div>
+      </div>
+      <div id="list" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card" id="ohCard">
+      <h2 class="label">Past Open Heavens verses</h2>
+      <div id="ohList" style="margin-top:8px"></div>
+    </div>
+
+    <div class="card">
+      <h2 class="label">How it works</h2>
+      <ol class="steps">
+        <li><b>Read</b>: read the verse out loud 3–5 times.</li>
+        <li><b>Fade</b>: words disappear a little at a time while you recite it.</li>
+        <li><b>First letters</b>: only the first letter of each word is left.</li>
+        <li><b>Test</b>: type the first letter of each word from memory.</li>
+        <li><b>Where?</b>: name the book, chapter and verse.</li>
+      </ol>
+    </div>
+
+  </div>
+
+  <!-- QUIZ VIEW -->
+  <div id="quizView" class="hidden">
+    <button class="ghost back" onclick="endQuiz()" style="padding-left:0">← All verses</button>
+    <div class="card"><div class="stage" id="quizProg"></div><div id="quizArea"></div></div>
+  </div>
+
+  <!-- STATUS VIEW -->
+  <div id="statusView" class="hidden">
+    <button class="ghost back" onclick="closeStatus()" style="padding-left:0">← Back to verse</button>
+    <div class="card">
+      <h2 class="label">WhatsApp status pictures</h2>
+      <div id="dlBox" class="hidden" style="margin:6px 0 4px">
+        <button class="primary" id="saveAllBtn" onclick="saveAll()">Save all 4 pictures</button>
+        <p class="hint" style="margin-top:8px">For each picture, tap <b>Save</b>, then choose <b>Save Image</b> to put it in your camera roll.</p>
+        <p class="hint" id="dlMsg"></p>
+      </div>
+      <ol class="steps" style="list-style:decimal">
+        <li id="holdTip"><b>Press and hold</b> each picture and choose <b>Save to Photos</b>. If that doesn't appear, tap the picture to open it full screen and take a screenshot.</li>
+        <li>In WhatsApp, go to <b>Updates → My status</b> and add them <b>in order, 1 to 4</b>.</li>
+      </ol>
+      <p class="hint" style="margin-top:10px">Your friends will read it, fill in the blanks, use the first letters, then say it from memory, just by tapping through.</p>
+      <div id="statusImgs" class="simgs"></div>
+    </div>
+  </div>
+  <div id="fullShot" class="hidden" onclick="this.classList.add('hidden')"><img alt=""></div>
+
+  <!-- PRACTICE VIEW -->
+  <div id="practiceView" class="hidden">
+    <button class="ghost back" onclick="backToList()" style="padding-left:0">← All verses</button>
+    <div class="card">
+      <div class="tabs" id="tabs">
+        <button data-m="read">Read</button>
+        <button data-m="fade">Fade</button>
+        <button data-m="letters">Letters</button>
+        <button data-m="test">Test</button>
+        <button data-m="where">Where?</button>
+      </div>
+      <div id="modeArea"></div>
+    </div>
+    <div class="card">
+      <h2 class="label">Share on WhatsApp</h2>
+      <div class="daytag">Turn this verse into 4 status pictures that teach it as people tap through.</div>
+      <button class="primary" style="margin-top:12px" onclick="openStatus()">Make status pictures</button>
+      <div id="practiceShare" class="row" style="margin-top:14px"></div>
+    </div>
+    <div class="card">
+      <h2 class="label">My study notes</h2>
+      <div class="daytag">What this verse means to you, a prayer, or how you'll live it out. Saves as you type.</div>
+      <textarea id="notesIn" placeholder="Write your thoughts…" style="margin-top:8px"></textarea>
+    </div>
+    <div class="row" style="justify-content:flex-end">
+      <button class="ghost" onclick="deleteCurrent()" style="color:var(--bad)">Delete verse</button>
+    </div>
+  </div>
+
+  <input id="typeIn" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false">
+</div>
+
+<script>
+const STARTERS = [
+  {ref:"John 3:16 (KJV)", text:"For God so loved the world, that he gave his only begotten Son, that whosoever believeth in him should not perish, but have everlasting life."},
+  {ref:"Philippians 4:13 (KJV)", text:"I can do all things through Christ which strengtheneth me."},
+  {ref:"Proverbs 3:5-6 (KJV)", text:"Trust in the LORD with all thine heart; and lean not unto thine own understanding. In all thy ways acknowledge him, and he shall direct thy paths."},
+  {ref:"Psalm 119:11 (KJV)", text:"Thy word have I hid in mine heart, that I might not sin against thee."}
+];
+const KEY = "scripture-memory-v1";
+const SITE_URL = "https://franciscaoganyaoroge.github.io/memorize/";   // public website address, filled in when the site is published
+const ON_CLAUDE = /claude(usercontent)?\.(ai|com)$/.test(location.hostname) || location.hostname.endsWith("claudeusercontent.com");
+const shareBase = () => SITE_URL || (ON_CLAUDE ? "" : location.origin + location.pathname);
+let verses = load();
+let cur = null, mode = "read", fadeStage = 0, fadeOrder = [], peeked = new Set();
+let test = null;
+
+function load(){
+  try{ const s = JSON.parse(localStorage.getItem(KEY)); if(Array.isArray(s) && s.length) return s; }catch(e){}
+  return STARTERS.map((v,i)=>({id:Date.now()+i, ...v, best:null, tries:0}));
+}
+function persist(){ try{ localStorage.setItem(KEY, JSON.stringify(verses)); }catch(e){} }
+const esc = s => s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const words = t => t.trim().split(/\s+/);
+const firstLetter = w => { const m = w.match(/[A-Za-z0-9]/); return m ? m[0].toLowerCase() : null; };
+
+/* ---------- share a verse with friends ---------- */
+const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g,"+").replace(/_/g,"/"))));
+function verseLink(v){ const base=shareBase(); if(!base) return ""; return base + "#add=" + b64e(JSON.stringify({r:v.ref, t:v.text, d:v.day||dayKey(0)})); }
+function waHref(v){
+  const link=verseLink(v); if(!link) return "";
+  const msg = `📖 Today's Open Heavens memory verse: ${refShort(v)}\n\n“${v.text}”\n\nTap to practice it (no login needed):\n${link}`;
+  return "https://wa.me/?text=" + encodeURIComponent(msg);
+}
+function shareBtns(v){
+  const h=waHref(v); if(!h) return "";
+  return `<a class="btnlink" href="${h}" target="_blank" rel="noopener">Send to friends on WhatsApp</a>
+          <button onclick="copyLink(${v.id}, this)">Copy link</button>`;
+}
+async function copyLink(id, btn){
+  const v=verses.find(x=>x.id===id); const link=verseLink(v);
+  try{ await navigator.clipboard.writeText(link); btn.textContent="Copied ✓"; }
+  catch(e){ const box=document.createElement("textarea"); box.value=link; btn.after(box); box.select(); btn.textContent="Copy the link below"; }
+  setTimeout(()=>{ btn.textContent="Copy link"; },2500);
+}
+function importFromHash(){
+  const m = location.hash.match(/^#add=([A-Za-z0-9_-]+)/); if(!m) return;
+  let data=null; try{ data = JSON.parse(b64d(m[1])); }catch(e){}
+  try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
+  if(!data || !data.r || !data.t) return;
+  let v = verses.find(x=>x.ref===data.r && x.day===data.d);
+  if(!v){ v={id:Date.now(), ref:String(data.r).slice(0,120), text:String(data.t).slice(0,2000), day:/^\d{4}-\d\d-\d\d$/.test(data.d)?data.d:dayKey(0), best:null, tries:0, shared:true}; verses.unshift(v); persist(); }
+  const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 <b>${esc(refShort(v))}</b> was added to your verses.`;
+  document.body.appendChild(t); setTimeout(()=>t.remove(),5000);
+}
+
+/* ---------- today ---------- */
+function dayKey(offset){ const d=new Date(); d.setDate(d.getDate()+offset);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function niceDay(k){ const [y,m,d]=k.split("-").map(Number); return new Date(y,m-1,d).toLocaleDateString(undefined,{weekday:"long",month:"long",day:"numeric"}); }
+function renderToday(){
+  const el=document.getElementById("todayCard"), t=dayKey(0), y=dayKey(-1);
+  const tv=verses.filter(v=>v.day===t), yv=verses.filter(v=>v.day===y);
+  let h=`<div class="date">${niceDay(t)}</div>`;
+  if(tv.length){
+    h += tv.map(v=>`<div class="tverse">${esc(v.text)}</div><div class="row" style="justify-content:space-between">
+      <span class="tref">${esc(v.ref)}</span>
+      <span class="row">${v.best!=null?`<span class="badge">${v.best===100?"✓ ":""}${v.best}%</span>`:""}
+      <button class="primary" onclick="openVerse(${v.id})">Practice</button></span></div>
+      ${waHref(v)?`<div class="row tshare">${shareBtns(v)}</div>`:""}`).join('<div style="height:12px"></div>');
+  } else {
+    h += `<div class="ttitle">Today's memory verse</div>
+      <p class="hint">Look up today's memory verse in your Open Heavens devotional and add it here, or tap the link Francisca sends on WhatsApp.</p>
+      <button class="primary" onclick="showAdd(true)">+ Add today's verse</button>`;
+  }
+  if(yv.length){
+    h += `<div class="yest"><b>Review yesterday's verse first:</b> ${yv.map(v=>`<a href="#" onclick="openVerse(${v.id});return false" style="color:var(--accent)">${esc(v.ref)}</a>${v.best!=null?` (${v.best}%)`:""}`).join(", ")}</div>`;
+  }
+  el.innerHTML = h;
+}
+
+/* ---------- list ---------- */
+function renderList(){
+  renderToday();
+  const mine = verses.filter(v=>!v.day), oh = verses.filter(v=>v.day && v.day!==dayKey(0));
+  document.getElementById("list").innerHTML = mine.length ? itemsHTML(mine) : '<p class="hint">Nothing here yet. Tap “Add verse” to start your own study list.</p>';
+  document.getElementById("ohCard").classList.toggle("hidden", !oh.length);
+  document.getElementById("ohList").innerHTML = itemsHTML(oh);
+}
+function itemsHTML(arr){
+  return arr.map(v=>`
+    <div class="verse-item">
+      <div style="min-width:0">
+        <div class="ref">${esc(v.ref)}${v.day?` <span class="daytag">· ${niceDay(v.day).replace(/^\w+, /,"")}</span>`:""}</div>
+        <div class="preview">${esc(v.text)}</div>
+      </div>
+      <div class="row" style="flex-wrap:nowrap">
+        ${v.best!=null ? `<span class="badge" title="Words">${v.best===100?"✓ ":""}${v.best}%</span>` : ""}${v.refBest!=null ? `<span class="badge" title="Reference">📍${v.refBest}%</span>` : ""}
+        <button onclick="openVerse(${v.id})">Practice</button>
+      </div>
+    </div>`).join("");
+}
+let addingToday = false;
+function showAdd(today=false){
+  addingToday = today;
+  const f=document.getElementById("addForm"); f.classList.remove("hidden");
+  document.getElementById("addTitle").textContent = today ? "Today's memory verse" : "";
+  f.scrollIntoView({behavior:"smooth", block:"start"});
+}
+function hideAdd(){ addingToday=false; document.getElementById("addForm").classList.add("hidden"); refIn.value=""; textIn.value=""; }
+function saveVerse(){
+  const ref = refIn.value.trim(), text = textIn.value.trim().replace(/\s+/g," ");
+  if(!ref || !text){ (ref?textIn:refIn).classList.add("shake"); setTimeout(()=>{refIn.classList.remove("shake");textIn.classList.remove("shake")},300); return; }
+  verses.unshift({id:Date.now(), ref, text, best:null, tries:0, ...(addingToday?{day:dayKey(0)}:{})});
+  persist(); hideAdd(); renderList();
+}
+
+/* ---------- practice ---------- */
+function openVerse(id){
+  cur = verses.find(v=>v.id===id); if(!cur) return;
+  listView.classList.add("hidden"); practiceView.classList.remove("hidden");
+  document.getElementById("notesIn").value = cur.notes || "";
+  document.getElementById("practiceShare").innerHTML = waHref(cur) ? `<div class="daytag" style="width:100%">Or send a link so friends can practice it on their own phone:</div>${shareBtns(cur)}` : "";
+  setMode("read"); window.scrollTo(0,0);
+}
+function backToList(){ practiceView.classList.add("hidden"); listView.classList.remove("hidden"); test=null; renderList(); }
+function deleteCurrent(){
+  const area = document.getElementById("modeArea");
+  area.insertAdjacentHTML("beforeend", `<div class="result" id="confirmDel">Delete ${esc(cur.ref)}?
+    <div class="row" style="margin-top:8px"><button class="primary" style="background:var(--bad);border-color:var(--bad)" onclick="reallyDelete()">Delete</button>
+    <button onclick="document.getElementById('confirmDel').remove()">Keep</button></div></div>`);
+}
+function reallyDelete(){ verses = verses.filter(v=>v!==cur); persist(); backToList(); }
+
+document.getElementById("tabs").addEventListener("click", e=>{ const m=e.target.dataset.m; if(m) setMode(m); });
+function setMode(m){
+  mode = m; test = null; W = null;
+  document.querySelectorAll("#tabs button").forEach(b=>b.classList.toggle("on", b.dataset.m===m));
+  if(m==="fade"){ fadeStage=0; peeked.clear(); const n=words(cur.text).length; fadeOrder=[...Array(n).keys()].sort(()=>Math.random()-.5); }
+  if(m==="test") startTest();
+  render();
+}
+
+function render(){
+  const area = document.getElementById("modeArea"), ws = words(cur.text);
+  let head = `<div class="ref-big">${esc(cur.ref)}</div>`;
+  if(mode==="fade" && fadeStage>=3) head = `<div class="ref-big"><span class="w ${peeked.has(-1)?"peek":"hide"}" onclick="peek(-1)">${esc(cur.ref)}</span></div>`;
+  if(mode==="read"){
+    area.innerHTML = head + `<div class="verse">${esc(cur.text)}</div>
+      <p class="hint">Read it out loud slowly 3–5 times. <b>Say the reference before and after</b>: “${esc(refShort(cur))} … ${esc(refShort(cur))}.” That's how the address sticks along with the words.</p>
+      ${refHook(cur)}
+      <button class="primary" onclick="setMode('fade')">I'm ready → Fade</button>`;
+  }
+  else if(mode==="fade"){
+    const steps = 5, hideCount = Math.round(ws.length * fadeStage/steps);
+    const hiddenSet = new Set(fadeOrder.slice(0, hideCount));
+    area.innerHTML = head + `<div class="verse">${ws.map((w,i)=>{
+        const h = hiddenSet.has(i);
+        return `<span class="w ${h?(peeked.has(i)?"peek":"hide"):""}" ${h?`onclick="peek(${i})"`:""}>${esc(w)}</span>`;
+      }).join(" ")}</div>
+      <p class="stage">Step ${fadeStage} of ${steps}: ${fadeStage===0?"all words showing":fadeStage===steps?"everything hidden, say it from memory":"say the whole verse, filling in the blanks"}</p>
+      <p class="hint">Tap a blank if you get stuck. From step 3 the reference hides too, so say it first.</p>
+      <div class="row">
+        <button onclick="fade(-1)" ${fadeStage===0?"disabled":""}>← Show more</button>
+        ${fadeStage<steps ? `<button class="primary" onclick="fade(1)">Hide more →</button>`
+                          : `<button class="primary" onclick="setMode('letters')">Next: First letters →</button>`}
+      </div>`;
+  }
+  else if(mode==="letters"){
+    const shown = ws.map(w=>{
+      const i = w.search(/[A-Za-z0-9]/); if(i<0) return w;
+      return w.slice(0,i+1) + w.slice(i+1).replace(/[A-Za-z0-9']/g,"");
+    });
+    area.innerHTML = head + `<div class="verse" style="letter-spacing:.06em">${esc(shown.join(" "))}</div>
+      <p class="hint">Say the full verse using only the first letters. Repeat until it comes easily.</p>
+      <div class="row"><button onclick="setMode('read')">Peek at full verse</button>
+      <button class="primary" onclick="setMode('test')">Next: Test →</button></div>`;
+  }
+  else if(mode==="test") renderTest();
+  else if(mode==="where") renderWhere(area, cur, null);
+}
+function peek(i){ peeked.add(i); render(); }
+function fade(d){ fadeStage = Math.max(0, Math.min(5, fadeStage+d)); peeked.clear(); render(); }
+
+/* ---------- test: type first letter of each word ---------- */
+function startTest(){
+  const ws = words(cur.text);
+  test = {ws, letters: ws.map(firstLetter), pos:0, state: ws.map(()=>"todo"), misses:0, wrongHere:0, done:false};
+  skipBlanks();
+}
+function skipBlanks(){ while(test.pos<test.ws.length && test.letters[test.pos]===null){ test.state[test.pos]="done"; test.pos++; } if(test.pos>=test.ws.length) finishTest(); }
+function renderTest(){
+  const area = document.getElementById("modeArea"), t = test;
+  area.innerHTML = `<div class="ref-big">${esc(cur.ref)}</div>
+    <div class="verse" id="testVerse" onclick="focusType(true)">${t.ws.map((w,i)=>
+      `<span class="w ${t.state[i]} ${i===t.pos&&!t.done?"current":""}">${esc(w)}</span>`).join(" ")}</div>
+    ${t.done ? resultHTML() :
+      `<p class="hint">Type the <b>first letter</b> of each word. Miss twice and the word is given to you (in red).</p>
+       <div class="row"><button class="primary" onclick="focusType(true)">⌨️ Tap to type</button>
+       <button onclick="giveWord()">Show this word</button></div>
+       <p class="keypad-note">${t.pos} of ${t.ws.length} words</p>`}`;
+  if(!t.done){ focusType(); requestAnimationFrame(keepCurrentVisible); }
+}
+function focusType(force){
+  const a=document.activeElement;
+  if(!force && a && a!==document.body && a.id!=="typeIn" && a.closest && a.closest("input,textarea,select")) return; // don't steal focus from notes
+  const i=document.getElementById("typeIn"); i.value=""; i.focus({preventScroll:true}); }
+/* keep the word you're on visible above the phone keyboard */
+function keepCurrentVisible(){
+  if(mode!=="test" || !test || test.done) return;
+  const el=document.querySelector("#testVerse .current"); if(!el) return;
+  const vv=window.visualViewport, top=vv?vv.offsetTop:0, h=vv?vv.height:innerHeight;
+  const r=el.getBoundingClientRect(), y=r.top-top;
+  if(y<70 || r.bottom-top>h-60) window.scrollBy({top: y - h*0.3, behavior:"smooth"});
+}
+if(window.visualViewport) visualViewport.addEventListener("resize", ()=>setTimeout(keepCurrentVisible,50));
+document.getElementById("typeIn").addEventListener("focus", ()=>setTimeout(keepCurrentVisible,350));
+function typed(ch){
+  const t = test; if(!t || t.done) return;
+  ch = ch.toLowerCase(); if(!/[a-z0-9]/.test(ch)) return;
+  if(ch===t.letters[t.pos]){ t.state[t.pos] = t.wrongHere ? "miss" : "done"; advance(); }
+  else{
+    t.wrongHere++;
+    const v = document.getElementById("testVerse"); v.classList.remove("shake"); void v.offsetWidth; v.classList.add("shake");
+    if(t.wrongHere>=2){ t.state[t.pos]="miss"; advance(); }
+  }
+}
+function giveWord(){ if(!test||test.done) return; test.wrongHere=1; test.state[test.pos]="miss"; advance(); }
+function advance(){
+  const t = test; if(t.state[t.pos]==="miss") t.misses++;
+  t.wrongHere=0; t.pos++; skipBlanks(); renderTest();
+}
+function finishTest(){
+  const t = test; t.done = true;
+  const total = t.letters.filter(l=>l!==null).length;
+  t.score = Math.round(100*(total - t.misses)/total);
+  cur.tries = (cur.tries||0)+1; cur.best = Math.max(cur.best??0, t.score); persist();
+  document.getElementById("typeIn").blur();
+}
+function resultHTML(){
+  const s = test.score;
+  const msg = s===100 ? "Perfect! You've got it memorized. Come back tomorrow and test again to make it stick."
+    : s>=80 ? "So close! Look at the red words, then try again."
+    : "Good start. Go back to Fade or First letters for a few rounds, then test again.";
+  return `<div class="result"><b>${s}% correct</b><br>${msg}
+    <div class="row" style="margin-top:10px"><button class="primary" onclick="setMode('test')">Try again</button>
+    <button onclick="setMode('where')">Next: Where is it? →</button><button onclick="backToList()">Done</button></div></div>`;
+}
+const typeIn = document.getElementById("typeIn");
+typeIn.addEventListener("input", ()=>{ const v=typeIn.value; typeIn.value=""; for(const c of v) typed(c); });
+document.addEventListener("keydown", e=>{
+  if(mode!=="test" || !test || test.done || e.metaKey || e.ctrlKey) return;
+  if(document.activeElement===typeIn) return; // handled by input event
+  if(e.target.closest && e.target.closest("input,textarea,select")) return; // typing in notes or a form
+  if(e.key.length===1){ typed(e.key); e.preventDefault(); }
+});
+
+/* ---------- Where is it? ---------- */
+function normBook(b){ return b.toLowerCase().replace(/^iii\s/,"3 ").replace(/^ii\s/,"2 ").replace(/^i\s/,"1 ").replace(/^psalms$/,"psalm").replace(/^song of songs$/,"song of solomon").replace(/^revelations$/,"revelation").trim(); }
+function parseRef(v){
+  const m = v.ref.replace(/\(.*?\)/g,"").trim().match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-–]\s*(\d+))?/);
+  if(!m) return null;
+  const nb = normBook(m[1]); const idx = BOOKS.findIndex(b=>normBook(b)===nb);
+  return {book: idx>=0?BOOKS[idx]:m[1], bi: idx, ch:+m[2], v:+m[3], v2: m[4]?+m[4]:null};
+}
+function refShort(v){ const r=parseRef(v); return r ? `${r.book} ${r.ch}:${r.v}${r.v2?"-"+r.v2:""}` : v.ref.replace(/\s*\(.*?\)/,""); }
+function refHook(v){
+  const r=parseRef(v); if(!r || r.bi<0) return "";
+  const where = r.bi<39 ? `the Old Testament (book ${r.bi+1} of 39)` : `the New Testament (book ${r.bi-38} of 27)`;
+  const groups=[[0,4,"the Law"],[5,16,"the History books"],[17,21,"the Poetry & Wisdom books"],[22,26,"the Major Prophets"],[27,38,"the Minor Prophets"],[39,42,"the Gospels"],[43,43,"Acts"],[44,56,"Paul's letters"],[57,64,"the General letters"],[65,65,"Revelation"]];
+  const g = groups.find(x=>r.bi>=x[0]&&r.bi<=x[1]);
+  return `<p class="hint">📍 <b>${esc(r.book)}</b> is in ${where}${g&&g[2]!==r.book?`, in ${g[2]}`:""}.</p>`;
+}
+function bookChoices(r){
+  const pool = new Set([r.book]);
+  if(r.bi>=0){ const near=[-2,-1,1,2,-3,3].map(d=>BOOKS[r.bi+d]).filter(Boolean); near.sort(()=>Math.random()-.5); for(const b of near){ if(pool.size>=3) break; pool.add(b); } }
+  while(pool.size<4) pool.add(BOOKS[Math.floor(Math.random()*BOOKS.length)]);
+  return [...pool].sort(()=>Math.random()-.5);
+}
+let W = null;
+function renderWhere(area, v, onNext){
+  const r = parseRef(v);
+  if(!r){ area.innerHTML = `<p class="hint">I can't read the reference “${esc(v.ref)}”. Write it like “Romans 8:28” to use this practice.</p>`; return; }
+  if(!W || W.v!==v){ W = {v, r, area, onNext, step:"book", choices:bookChoices(r), picked:null, pts:0}; }
+  W.area = area; W.onNext = onNext;
+  let h = `<div class="wverse">${esc(v.text)}</div>`;
+  h += `<div><b>1. Which book?</b></div><div class="choices">${W.choices.map(b=>{
+      let c=""; if(W.picked){ if(b===r.book) c="right"; else if(b===W.picked) c="wrong"; }
+      return `<button class="${c}" ${W.picked?"disabled":""} onclick="pickBook(this.textContent)">${esc(b)}</button>`; }).join("")}</div>`;
+  if(W.step!=="book"){
+    h += `<div style="margin-top:8px"><b>2. Chapter and verse?</b></div>
+      <div class="nums"><input id="wCh" inputmode="numeric" placeholder="ch" ${W.step==="done"?`value="${W.ch??""}" disabled`:""}>
+      <span style="font-size:1.4rem">:</span><input id="wV" inputmode="numeric" placeholder="v" ${W.step==="done"?`value="${W.vv??""}" disabled`:""}>
+      ${W.step==="nums"?`<button class="primary" onclick="checkNums()">Check</button>`:""}</div>`;
+  }
+  if(W.step==="done"){
+    const msg = W.pts===3 ? "Perfect, you know exactly where it is!" : W.pts===2 ? "Almost! Say the reference out loud 3 times." : "Keep at it. Say the reference out loud 3 times, then try again.";
+    h += `<div class="result"><b>${esc(refShort(v))}</b> · ${W.pts}/3<br>${msg}
+      ${refHook(v)}
+      <div class="row" style="margin-top:8px">${onNext?`<button class="primary" onclick="W.onNext()">Next →</button>`:`<button class="primary" onclick="W=null;render()">Try again</button>`}</div></div>`;
+  }
+  area.innerHTML = h;
+  if(W.step==="nums") setTimeout(()=>{ const i=document.getElementById("wCh"); i&&i.focus(); },50);
+}
+function pickBook(b){
+  W.picked=b; if(b===W.r.book) W.pts++; W.step="nums"; renderWhere(W.area, W.v, W.onNext);
+}
+function checkNums(){
+  W.ch = parseInt(document.getElementById("wCh").value); W.vv = parseInt(document.getElementById("wV").value);
+  const r=W.r; if(W.ch===r.ch) W.pts++; if(W.vv===r.v || (r.v2 && W.vv>=r.v && W.vv<=r.v2)) W.pts++;
+  W.step="done"; const pct=Math.round(W.pts/3*100); W.v.refBest=Math.max(W.v.refBest??0,pct); persist();
+  if(W.onQuiz) W.onQuiz(W.pts);
+  renderWhere(W.area, W.v, W.onNext);
+  const ci=document.getElementById("wCh"), vi=document.getElementById("wV");
+  ci.style.borderColor = W.ch===r.ch?"var(--good)":"var(--bad)"; vi.style.borderColor = (W.vv===r.v||(r.v2&&W.vv>=r.v&&W.vv<=r.v2))?"var(--good)":"var(--bad)";
+}
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && W && W.step==="nums" && (e.target.id==="wCh"||e.target.id==="wV")){ e.preventDefault(); if(e.target.id==="wCh") document.getElementById("wV").focus(); else checkNums(); } });
+
+/* quiz across all verses */
+let Q = null;
+function startQuiz(){
+  const pool = verses.filter(v=>parseRef(v)).sort(()=>Math.random()-.5).slice(0,10);
+  if(!pool.length) return;
+  Q = {pool, i:0, pts:0};
+  listView.classList.add("hidden"); quizView.classList.remove("hidden"); window.scrollTo(0,0); quizStep();
+}
+function quizStep(){
+  const area=document.getElementById("quizArea"), prog=document.getElementById("quizProg");
+  if(Q.i>=Q.pool.length){
+    const pct=Math.round(Q.pts/(Q.pool.length*3)*100);
+    prog.textContent=""; area.innerHTML = `<div class="result"><b>${pct}%</b> of references right across ${Q.pool.length} verse${Q.pool.length>1?"s":""}.<br>
+      ${pct===100?"Excellent! You know where they all are.":"Go over the ones you missed, then come back and try again tomorrow."}
+      <div class="row" style="margin-top:8px"><button class="primary" onclick="startQuiz()">Go again</button><button onclick="endQuiz()">Done</button></div></div>`;
+    return;
+  }
+  prog.textContent = `Verse ${Q.i+1} of ${Q.pool.length}`;
+  W = null; renderWhere(area, Q.pool[Q.i], ()=>{ Q.i++; quizStep(); });
+  W.onQuiz = p=>{ Q.pts+=p; };
+}
+function endQuiz(){ Q=null; W=null; quizView.classList.add("hidden"); listView.classList.remove("hidden"); renderList(); }
+
+
+/* ---------- WhatsApp status pictures ---------- */
+let bgImg=null;
+function loadBg(){ return bgImg ? Promise.resolve(bgImg) : new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>{bgImg=i;res(i)}; i.onerror=rej; i.src="bg.jpg"; }); }
+async function fontsReady(){
+  try{ await Promise.all(['italic 500 60px "Cormorant Garamond"','600 60px "Cormorant Garamond"','500 30px Jost','60px "Pinyon Script"'].map(f=>document.fonts.load(f))); }catch(e){}
+}
+function wrapLines(ctx, text, maxW){
+  const out=[]; let line="";
+  for(const w of text.split(/\s+/)){ const t=line?line+" "+w:w; if(ctx.measureText(t).width>maxW && line){ out.push(line); line=w; } else line=t; }
+  if(line) out.push(line); return out;
+}
+function spaced(ctx, text, x, y, spacing){ // letter-spaced centered text
+  const chars=[...text]; const w=chars.reduce((a,c)=>a+ctx.measureText(c).width,0)+spacing*(chars.length-1);
+  let cx=x-w/2; for(const c of chars){ ctx.fillText(c,cx,y); cx+=ctx.measureText(c).width+spacing; }
+}
+function drawSlide(ctx, v, kind, dateStr){
+  const W=1080,H=1920; ctx.textAlign="left"; ctx.textBaseline="alphabetic";
+  ctx.drawImage(bgImg,0,0,W,H);
+  // soft parchment wash over middle for legibility
+  const g=ctx.createLinearGradient(0,560,0,1560); g.addColorStop(0,"rgba(251,244,230,0)"); g.addColorStop(.12,"rgba(251,244,230,.85)"); g.addColorStop(.88,"rgba(251,244,230,.85)"); g.addColorStop(1,"rgba(251,244,230,0)");
+  ctx.fillStyle=g; ctx.fillRect(0,560,W,1000);
+  const navy="#1b2540", gold="#b97a22", ink="#23222a";
+  // masthead
+  ctx.fillStyle=gold; ctx.font='500 26px Jost, sans-serif'; spaced(ctx,"✦  ✦  ✦",W/2,640,4);
+  ctx.fillStyle=navy; ctx.font='600 64px "Cormorant Garamond", serif'; ctx.textAlign="center";
+  ctx.fillText("Memorize Today's",W/2,720); ctx.font='italic 500 64px "Cormorant Garamond", serif'; ctx.fillText("Open Heavens",W/2,790);
+  ctx.fillStyle=gold; ctx.font='58px "Pinyon Script", cursive'; ctx.fillText("with Francisca",W/2,860);
+  ctx.textAlign="left";
+  const step={full:["1 of 4","Read it out loud"],blanks:["2 of 4","Fill in the blanks"],letters:["3 of 4","First letters only"],recall:["4 of 4","Now say it from memory"]}[kind];
+  ctx.fillStyle=gold; ctx.font='500 28px Jost, sans-serif'; spaced(ctx,(step[0]+"  ·  "+step[1]).toUpperCase(),W/2,950,5);
+  // line rule
+  ctx.strokeStyle="rgba(185,122,34,.5)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(W/2-160,985); ctx.lineTo(W/2+160,985); ctx.stroke();
+  // body text
+  const ws=words(v.text); let body;
+  if(kind==="full") body=v.text;
+  else if(kind==="blanks") body=ws.map((w,i)=>{ const core=w.replace(/[^A-Za-z0-9']/g,""); return (core.length>2 && (i%3===1||i%5===3)) ? w.replace(/[A-Za-z0-9']+/, m=>"_".repeat(Math.min(Math.max(m.length,3),8))) : w; }).join(" ");
+  else if(kind==="letters") body=ws.map(w=>{ const i=w.search(/[A-Za-z0-9]/); return i<0?w:w.slice(0,i+1)+w.slice(i+1).replace(/[A-Za-z0-9']/g,""); }).join("  ");
+  else body=null;
+  const ref = refShort(v) + (v.ref.match(/\(([^)]+)\)/) ? "  ("+v.ref.match(/\(([^)]+)\)/)[1]+")" : "");
+  const top=1030, bottom=1420, maxW=860;
+  if(body){
+    let size=64, lines;
+    for(;size>=30;size-=2){ ctx.font=`italic 500 ${size}px "Cormorant Garamond", serif`; lines=wrapLines(ctx,body,maxW); if(lines.length*size*1.32 <= bottom-top) break; }
+    const lh=size*1.32, startY=top+((bottom-top)-lines.length*lh)/2+size;
+    ctx.fillStyle=ink; ctx.textAlign="center";
+    lines.forEach((l,i)=>ctx.fillText(l,W/2,startY+i*lh));
+    ctx.fillStyle=gold; ctx.font='500 32px Jost, sans-serif'; ctx.textAlign="left"; spaced(ctx,ref.toUpperCase(),W/2,1480,6);
+  } else {
+    ctx.fillStyle=navy; ctx.textAlign="center"; ctx.font='600 84px "Cormorant Garamond", serif';
+    const rl=wrapLines(ctx,refShort(v),maxW); rl.forEach((l,i)=>ctx.fillText(l,W/2,1180+i*92));
+    ctx.fillStyle=ink; ctx.font='italic 500 46px "Cormorant Garamond", serif';
+    ctx.fillText("Close your eyes and say the whole verse.",W/2,1330);
+    ctx.fillText("Then say where it's found, twice.",W/2,1392);
+    ctx.textAlign="left";
+  }
+  ctx.textAlign="center"; ctx.fillStyle="rgba(35,34,42,.6)"; ctx.font='500 24px Jost, sans-serif'; ctx.textAlign="left"; spaced(ctx,dateStr.toUpperCase(),W/2,1530,4);
+}
+async function openStatus(){
+  practiceView.classList.add("hidden"); statusView.classList.remove("hidden"); window.scrollTo(0,0);
+  const box=document.getElementById("statusImgs"); box.innerHTML='<p class="hint">Making your pictures…</p>';
+  try{ await Promise.all([loadBg(), fontsReady()]); }catch(e){ box.innerHTML='<p class="hint">Couldn\'t load the background picture. Check your connection and try again.</p>'; return; }
+  const c=document.createElement("canvas"); c.width=1080; c.height=1920; const ctx=c.getContext("2d");
+  const dateStr = cur.day ? niceDay(cur.day) : niceDay(dayKey(0));
+  const kinds=[["full","1 · Read"],["blanks","2 · Blanks"],["letters","3 · Letters"],["recall","4 · Recall"]];
+  let html=""; slideBlobs=[];
+  const base = refShort(cur).replace(/[^A-Za-z0-9]+/g,"-").replace(/-+$/,"");
+  for(const [i,[k,cap]] of kinds.entries()){
+    drawSlide(ctx,cur,k,dateStr);
+    const url=c.toDataURL("image/jpeg",.9);
+    slideBlobs.push({name:`${i+1}-${base}.jpg`, blob: await new Promise(r=>c.toBlob(r,"image/jpeg",.9))});
+    html+=`<figure><img src="${url}" alt="${cap}" onclick="showFull(this.src)"><figcaption>${cap}</figcaption></figure>`;
+  }
+  box.innerHTML=html; document.getElementById("dlMsg").textContent="";
+}
+let slideBlobs=[], DL=null;
+const canShareFiles = (()=>{ try{ return !!(navigator.canShare && navigator.canShare({files:[new File([new Blob(["x"])],"x.jpg",{type:"image/jpeg"})]})); }catch(e){ return false; } })();
+if(!ON_CLAUDE && canShareFiles){ document.getElementById("dlBox").classList.remove("hidden");
+  document.getElementById("dlBox").querySelector(".hint").innerHTML="Tap the button, then choose <b>Save 4 Images</b> to put them all in your camera roll at once."; }
+(async()=>{ try{ if(window.claude && claude.use) DL = await claude.use("downloads"); }catch(e){ DL=null; }
+  if(DL){ document.getElementById("dlBox").classList.remove("hidden"); document.getElementById("holdTip").innerHTML="If saving doesn't work, <b>press and hold</b> a picture and choose <b>Save to Photos</b>, or tap it and take a screenshot."; } })();
+async function saveAll(){
+  if(!slideBlobs.length) return;
+  if(!DL && canShareFiles){
+    const files=slideBlobs.map(s=>new File([s.blob], s.name, {type:"image/jpeg"}));
+    try{ await navigator.share({files}); document.getElementById("dlMsg").textContent="Done! Now post them to your status in order, 1 to 4."; }
+    catch(e){ if(e && e.name!=="AbortError") document.getElementById("dlMsg").textContent="Saving didn't work. Press and hold each picture instead."; }
+    return;
+  }
+  if(!DL) return;
+  const msg=document.getElementById("dlMsg"), btn=document.getElementById("saveAllBtn"); btn.disabled=true;
+  let saved=0;
+  for(let i=0;i<slideBlobs.length;i++){
+    msg.textContent=`Saving picture ${i+1} of ${slideBlobs.length}…`;
+    let tries=0;
+    while(true){
+      try{ await DL.save({filename:slideBlobs[i].name, data:slideBlobs[i].blob}); saved++; break; }
+      catch(e){
+        const code=e&&e.code;
+        if(code==="rate_limited" && tries<3){ tries++; await new Promise(r=>setTimeout(r,1500)); continue; }
+        if(code==="declined"){ msg.textContent = saved ? `Saved ${saved} of 4. You stopped at picture ${i+1}; tap the button to start again.` : "No pictures saved."; btn.disabled=false; return; }
+        msg.textContent="Saving isn't available here. Press and hold each picture instead."; btn.disabled=false; return;
+      }
+    }
+  }
+  msg.textContent="All 4 pictures sent to your phone. Now post them to your status in order, 1 to 4.";
+  btn.disabled=false;
+}
+function showFull(src){ const f=document.getElementById("fullShot"); f.querySelector("img").src=src; f.classList.remove("hidden"); }
+function closeStatus(){ statusView.classList.add("hidden"); practiceView.classList.remove("hidden"); }
+
+/* ---------- Bible picker ---------- */
+const BOOKS = ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalm","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi","Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"];
+const cache = {};
+const pVer=document.getElementById("pVer"), pBook=document.getElementById("pBook"), pCh=document.getElementById("pCh"),
+      pFrom=document.getElementById("pFrom"), pTo=document.getElementById("pTo"), pStatus=document.getElementById("pStatus");
+let bookData = null;
+const opts = (n, sel=1) => Array.from({length:n},(_,i)=>`<option value="${i+1}" ${i+1===sel?"selected":""}>${i+1}</option>`).join("");
+pBook.innerHTML = '<option value="">Choose a book…</option>' + BOOKS.map((b,i)=>`<option value="${i+1}">${b}</option>`).join("");
+try{ pVer.value = localStorage.getItem(KEY+"-ver") || "NKJV"; }catch(e){}
+
+async function loadBook(){
+  const ver=pVer.value==='NKJV'?'KJV':pVer.value, b=pBook.value; if(!b){ bookData=null; return false; }
+  const k=ver+"/"+b;
+  if(!cache[k]){
+    pStatus.textContent = "Loading…";
+    try{ const G=[5,17,22,39,43,44,58,66], gi=G.findIndex(x=>+b<=x); const gk=ver+'-'+gi;
+      if(!cache[gk]){ const r = await fetch(`b/${gk}.json`); if(!r.ok) throw 0; cache[gk] = await r.json(); }
+      cache[k] = cache[gk][b]; }
+    catch(e){ pStatus.textContent = "Couldn't load that book. Check your connection and try again."; return false; }
+  }
+  bookData = cache[k]; return true;
+}
+async function onBook(){
+  if(!(await loadBook())){ pCh.innerHTML=pFrom.innerHTML=pTo.innerHTML=""; return; }
+  pCh.innerHTML = opts(bookData.length); onCh();
+}
+function onCh(){
+  const n = bookData[pCh.value-1].length;
+  pFrom.innerHTML = opts(n); pTo.innerHTML = opts(n); fillVerse();
+}
+function onFrom(){
+  const n = bookData[pCh.value-1].length, f=+pFrom.value;
+  if(+pTo.value < f) pTo.innerHTML = opts(n, f); fillVerse();
+}
+function fillVerse(){
+  if(!bookData) return;
+  const ch=+pCh.value, f=+pFrom.value, t=Math.max(f, +pTo.value), vs=bookData[ch-1];
+  const text = vs.slice(f-1, t).join(" ").replace(/\s+/g," ").trim();
+  const refPlain = `${BOOKS[pBook.value-1]} ${ch}:${f}${t>f?"-"+t:""}`;
+  refIn.value = `${refPlain} (${pVer.value})`;
+  const pLink = document.getElementById("pLink");
+  if(pVer.value==="NKJV"){
+    textIn.value = "";
+    pLink.href = "https://www.biblegateway.com/passage/?search="+encodeURIComponent(refPlain)+"&version=NKJV";
+    pLink.textContent = "Open "+refPlain+" (NKJV) in Bible Gateway ↗";
+    pLink.classList.remove("hidden");
+    pStatus.textContent = "The NKJV is copyrighted, so it can't fill in by itself. Open it with the link below, copy the verse, come back and paste it in the box.";
+    return;
+  }
+  pLink.classList.add("hidden");
+  textIn.value = text;
+  const wc = words(text).length;
+  pStatus.textContent = wc>80 ? `That's ${wc} words. Shorter passages (1–3 verses) are easier to learn; you can always add the next part later.` : "";
+}
+pVer.addEventListener("change", async ()=>{ try{localStorage.setItem(KEY+"-ver",pVer.value)}catch(e){}
+  if(!pBook.value) return; const ch=pCh.value, f=pFrom.value, t=pTo.value;
+  if(await loadBook()){ pStatus.textContent=""; pCh.value=ch; const n=bookData[ch-1].length; pFrom.innerHTML=opts(n,+f); pTo.innerHTML=opts(n,+t); fillVerse(); } });
+pBook.addEventListener("change", onBook);
+pCh.addEventListener("change", onCh);
+pFrom.addEventListener("change", onFrom);
+pTo.addEventListener("change", fillVerse);
+
+document.getElementById("notesIn").addEventListener("input", e=>{ if(cur){ cur.notes=e.target.value; persist(); } });
+document.querySelectorAll(".verse-item .preview").forEach(()=>{});
+importFromHash();
+renderList();
+</script>
+</body>
+</html>

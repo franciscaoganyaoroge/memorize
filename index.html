@@ -1135,7 +1135,11 @@ function startStory(si){
 const bookName = i => BOOKS[i]==="Psalm" ? "Psalms" : BOOKS[i];
 function storyStep(){
   const g=G;
-  if(g.i>g.b){ const n=g.b-g.a+1; gArea().innerHTML=`<h2 class="label">🛤️ Bible Story Path</h2>`+finishCard(`${g.score} of ${n} on the first try`, `You walked through ${esc(g.name)}.`, g.score===n?3:g.score>=n*.7?2:1, `startStory(${g.si})`); return; }
+  if(g.i>g.b){ const n=g.b-g.a+1;
+    gArea().innerHTML=`<h2 class="label">🛤️ Bible Story Path</h2>`+finishCard(`${g.score} of ${n} on the first try`, `You walked through ${esc(g.name)}.`, g.score===n?3:g.score>=n*.7?2:1, `startStory(${g.si})`);
+    document.querySelector("#gameArea .result .row").insertAdjacentHTML("afterbegin", `<button class="primary" onclick="startOrder(${g.si})">Next: put them in order →</button>`);
+    const again=document.querySelector("#gameArea .result .row button:nth-child(2)"); if(again) again.classList.remove("primary");
+    return; }
   if(!g.choices){
     const near=[-3,-2,-1,1,2,3].map(d=>g.i+d).filter(k=>k>=0&&k<66); const pick=shuffle(near).slice(0,3);
     g.choices=shuffle([g.i,...pick]); g.first=true;
@@ -1149,6 +1153,38 @@ function storyStep(){
       <button class="primary" onclick="G.i++;G.picked=null;G.choices=null;storyStep()">${g.i<g.b?"Next →":"See score"}</button>` : ""}`;
 }
 function pickStory(k){ const g=G; g.picked=k; if(k===g.i) g.score++; storyStep(); }
+
+
+/* ---- Order challenge: tap every book in the section from beginning to end ---- */
+function startOrder(si){
+  const [name,a,b]=STORY_SECTIONS[si];
+  const items=[]; for(let i=a;i<=b;i++) items.push(i);
+  G={id:"order", si, name, a, b, shown:shuffle(items), next:a, miss:0, t0:Date.now()};
+  renderOrder();
+}
+function renderOrder(){
+  const g=G, n=g.b-g.a+1, placed=g.next-g.a, done=g.next>g.b;
+  if(done){
+    const secs=Math.round((Date.now()-g.t0)/1000);
+    gArea().innerHTML=`<h2 class="label">📜 Order challenge</h2>`+finishCard(`${esc(g.name)} in order!`, `${g.miss===0?"No mistakes!":g.miss+" mistake"+(g.miss>1?"s":"")+"."} Time: ${secs>=60?Math.floor(secs/60)+"m "+(secs%60)+"s":secs+"s"}`, g.miss===0?3:g.miss<=Math.max(2,n/8)?2:1, `startOrder(${g.si})`);
+    if(g.si!==0) document.querySelector("#gameArea .result .row").insertAdjacentHTML("beforeend", `<button onclick="startOrder(0)">Try the whole Bible</button>`);
+    return;
+  }
+  const last = placed ? BOOKS.slice(Math.max(g.a,g.next-3), g.next).map((x,k)=>bookName(Math.max(g.a,g.next-3)+k)) : [];
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">📜 Order challenge</h2><span class="stat">${placed}/${n} · Mistakes: ${g.miss}</span></div>
+    <div class="stage" style="margin-bottom:4px">${esc(g.name)}</div>
+    <p class="hint">Tap these ${n} books in order, from first to last. Stuck? Think about the story. After 3 mistakes you get a story hint.</p>
+    <div class="built">${placed ? (g.next-g.a>3?"… → ":"") + last.map(esc).join(" → ") + " → <span class='ph'>?</span>" : `<span class="ph">Start with the first book…</span>`}</div>
+    <div class="tiles">${g.shown.map(i=>`<button id="ob${i}" class="${i<g.next?"used":""}" onclick="tapOrder(${i})">${esc(bookName(i))}</button>`).join("")}</div>
+    ${g.miss>=3 && g.lastMissAt===g.next ? `<p class="hint" style="margin-top:10px">Hint: ${esc(STORY[g.next])}</p>` : ""}`;
+}
+function tapOrder(i){
+  const g=G; if(i===g.next){ g.next++; renderOrder(); return; }
+  g.miss++; g.lastMissAt=g.next; g.missHere=(g.missHere||0)+1;
+  if(g.miss>=3){ renderOrder(); }
+  const el=document.getElementById("ob"+i); if(el){ el.classList.add("bad","shake"); setTimeout(()=>el.classList.remove("bad","shake"),400); }
+  const st=document.querySelector("#gameArea .ghead .stat"); if(st) st.textContent=`${g.next-g.a}/${g.b-g.a+1} · Mistakes: ${g.miss}`;
+}
 
 /* ---- 1. Verse Builder ---- */
 function chunkWords(text){

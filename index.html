@@ -80,6 +80,38 @@
   #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
   .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
   .hidden{display:none}
+  .gtiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+  .gtile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;text-transform:none;letter-spacing:0;padding:14px;min-height:120px;border:1px solid var(--rule);background:#fffaf0;font-family:'Cormorant Garamond',serif}
+  .gtile:hover{background:#fff4df}
+  .gtile .gi{font-size:1.6rem;line-height:1}
+  .gtile .gn{font-family:Jost,sans-serif;font-size:.72rem;letter-spacing:.14em;text-transform:uppercase;color:var(--night);font-weight:600;margin-top:4px}
+  .gtile .gd{font-size:1rem;color:var(--muted);line-height:1.25}
+  .gtile.wide{grid-column:1/-1;min-height:0;flex-direction:row;align-items:center;gap:12px}
+  .streak{display:flex;align-items:center;gap:14px;padding:12px 14px;background:var(--night);color:#fbf2e0;margin-top:4px}
+  .streak .num{font-family:'Cormorant Garamond',serif;font-size:2.4rem;font-weight:600;color:var(--gold-l);line-height:1}
+  .streak .days{display:flex;gap:5px;margin-top:6px}
+  .streak .days span{width:22px;height:22px;border:1px solid rgba(240,196,106,.45);display:flex;align-items:center;justify-content:center;font-size:.6rem;color:#c9c2b3}
+  .streak .days span.on{background:var(--gold-l);color:var(--night);border-color:var(--gold-l)}
+  .ghead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+  .ghead .stat{font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)}
+  .vpick{margin:4px 0 14px}
+  .built{font-family:'Cormorant Garamond',serif;font-size:1.35rem;line-height:1.6;min-height:60px;padding:10px 12px;border:1px dashed var(--rule);background:#fffaf0;margin-bottom:12px}
+  .built .ph{color:var(--muted);font-style:italic}
+  .tiles{display:flex;flex-wrap:wrap;gap:8px}
+  .tiles button{text-transform:none;letter-spacing:0;font-family:'Cormorant Garamond',serif;font-size:1.2rem;font-weight:600;padding:8px 12px;min-height:44px;border-color:var(--rule);background:#fffaf0}
+  .tiles button.used{visibility:hidden}
+  .tiles button.bad{background:var(--bad);color:#fff;border-color:var(--bad)}
+  .mgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .mcard{min-height:96px;padding:8px;text-transform:none;letter-spacing:0;font-family:'Cormorant Garamond',serif;font-size:.98rem;line-height:1.2;background:var(--night);color:transparent;border-color:var(--night);position:relative}
+  .mcard::after{content:"✦";position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--gold-l);font-size:1.2rem}
+  .mcard:hover{background:var(--night)}
+  .mcard.up,.mcard.done,.mcard.up:hover{background:#fffaf0;color:var(--ink);border-color:var(--rule)}
+  .mcard.up::after,.mcard.done::after{content:none}
+  .mcard.done{background:#e7f1e9;border-color:var(--good);color:var(--good)}
+  .mcard.ref{font-family:Jost,sans-serif;font-size:.78rem;font-weight:600;letter-spacing:.06em}
+  .clock{font-family:'Cormorant Garamond',serif;font-size:2.2rem;font-weight:600;color:var(--night);line-height:1}
+  .bigstars{font-size:1.6rem;letter-spacing:.2em;color:var(--gold)}
+
   .fromtag{display:inline-block;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-l);border:1px solid rgba(240,196,106,.5);padding:2px 7px;margin-top:10px}
   .pubmsg{font-family:'Cormorant Garamond',serif;font-style:italic;color:#e3d9c6;font-size:1.02rem;margin-top:8px}
   #ownerCard ol{margin:8px 0 0;padding-left:22px;font-family:'Cormorant Garamond',serif;font-size:1.05rem}
@@ -154,10 +186,10 @@
 
     <div class="card today" id="todayCard"></div>
 
-    <div class="card" id="quizCard">
+    <div class="card" id="gamesCard">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:14px">
-        <div style="flex:1"><h2 class="label">Where is it found?</h2><div class="daytag">See a verse and name the book, chapter and verse. Uses all your verses, mixed up.</div></div>
-        <button class="primary" onclick="startQuiz()">Start</button>
+        <div style="flex:1"><h2 class="label">Games</h2><div class="daytag" id="streakLine">Seven ways to practice your verses and have fun doing it.</div></div>
+        <button class="primary" onclick="openGames()">Play</button>
       </div>
     </div>
 
@@ -223,6 +255,12 @@
       </ol>
     </div>
 
+  </div>
+
+  <!-- GAMES VIEW -->
+  <div id="gamesView" class="hidden">
+    <button class="ghost back" id="gamesBack" onclick="gamesBack()" style="padding-left:0">← All verses</button>
+    <div class="card" id="gamesCardInner"><div id="gameArea"></div></div>
   </div>
 
   <!-- QUIZ VIEW -->
@@ -619,7 +657,7 @@ function finishTest(){
   const t = test; t.done = true;
   const total = t.letters.filter(l=>l!==null).length;
   t.score = Math.round(100*(total - t.misses)/total);
-  cur.tries = (cur.tries||0)+1; cur.best = Math.max(cur.best??0, t.score); persist();
+  cur.tries = (cur.tries||0)+1; cur.best = Math.max(cur.best??0, t.score); persist(); markPracticed();
   document.getElementById("typeIn").blur();
 }
 function resultHTML(){
@@ -632,8 +670,14 @@ function resultHTML(){
     <button onclick="setMode('where')">Next: Where is it? →</button><button onclick="backToList()">Done</button></div></div>`;
 }
 const typeIn = document.getElementById("typeIn");
-typeIn.addEventListener("input", ()=>{ const v=typeIn.value; typeIn.value=""; for(const c of v) typed(c); });
+let gameSink=null;
+typeIn.addEventListener("input", ()=>{ const v=typeIn.value; typeIn.value=""; for(const c of v){ if(gameSink) gameSink(c); else typed(c); } });
 document.addEventListener("keydown", e=>{
+  if(gameSink && !gamesView.classList.contains("hidden")){
+    if(e.metaKey||e.ctrlKey||document.activeElement===typeIn) return;
+    if(e.target.closest && e.target.closest("input,textarea,select")) return;
+    if(e.key.length===1){ gameSink(e.key); e.preventDefault(); } return;
+  }
   if(mode!=="test" || !test || test.done || e.metaKey || e.ctrlKey) return;
   if(document.activeElement===typeIn) return; // handled by input event
   if(e.target.closest && e.target.closest("input,textarea,select")) return; // typing in notes or a form
@@ -693,7 +737,7 @@ function pickBook(b){
 function checkNums(){
   W.ch = parseInt(document.getElementById("wCh").value); W.vv = parseInt(document.getElementById("wV").value);
   const r=W.r; if(W.ch===r.ch) W.pts++; if(W.vv===r.v || (r.v2 && W.vv>=r.v && W.vv<=r.v2)) W.pts++;
-  W.step="done"; const pct=Math.round(W.pts/3*100); W.v.refBest=Math.max(W.v.refBest??0,pct); persist();
+  W.step="done"; markPracticed(); const pct=Math.round(W.pts/3*100); W.v.refBest=Math.max(W.v.refBest??0,pct); persist();
   if(W.onQuiz) W.onQuiz(W.pts);
   renderWhere(W.area, W.v, W.onNext);
   const ci=document.getElementById("wCh"), vi=document.getElementById("wV");
@@ -713,7 +757,7 @@ function quizStep(){
   const area=document.getElementById("quizArea"), prog=document.getElementById("quizProg");
   if(Q.i>=Q.pool.length){
     const pct=Math.round(Q.pts/(Q.pool.length*3)*100);
-    prog.textContent=""; area.innerHTML = `<div class="result"><b>${pct}%</b> of references right across ${Q.pool.length} verse${Q.pool.length>1?"s":""}.<br>
+    prog.textContent=""; markPracticed(); area.innerHTML = `<div class="result"><b>${pct}%</b> of references right across ${Q.pool.length} verse${Q.pool.length>1?"s":""}.<br>
       ${pct===100?"Excellent! You know where they all are.":"Go over the ones you missed, then come back and try again tomorrow."}
       <div class="row" style="margin-top:8px"><button class="primary" onclick="startQuiz()">Go again</button><button onclick="endQuiz()">Done</button></div></div>`;
     return;
@@ -722,7 +766,9 @@ function quizStep(){
   W = null; renderWhere(area, Q.pool[Q.i], ()=>{ Q.i++; quizStep(); });
   W.onQuiz = p=>{ Q.pts+=p; };
 }
-function endQuiz(){ Q=null; W=null; quizView.classList.add("hidden"); listView.classList.remove("hidden"); renderList(); }
+function endQuiz(){ Q=null; W=null; quizView.classList.add("hidden");
+  if(quizFromGames){ quizFromGames=false; gamesView.classList.remove("hidden"); renderGameHub(); } else { listView.classList.remove("hidden"); renderList(); } }
+let quizFromGames=false;
 
 
 /* ---------- WhatsApp status pictures ---------- */
@@ -834,6 +880,201 @@ async function saveAll(){
 }
 function showFull(src){ const f=document.getElementById("fullShot"); f.querySelector("img").src=src; f.classList.remove("hidden"); }
 function closeStatus(){ statusView.classList.add("hidden"); practiceView.classList.remove("hidden"); }
+
+
+/* =================== GAMES =================== */
+const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
+const clean = w => w.replace(/[^A-Za-z0-9']/g,"").toLowerCase();
+
+/* ---- streak ---- */
+const STREAK_KEY = KEY+"-days";
+function practiceDays(){ try{ return new Set(JSON.parse(localStorage.getItem(STREAK_KEY)||"[]")); }catch(e){ return new Set(); } }
+function markPracticed(){ const d=practiceDays(); d.add(dayKey(0)); try{ localStorage.setItem(STREAK_KEY, JSON.stringify([...d].sort().slice(-400))); }catch(e){} updateStreakLine(); }
+function streakCount(){
+  const d=practiceDays(); let n=0, off=d.has(dayKey(0))?0:-1;
+  while(d.has(dayKey(off))){ n++; off--; } return n;
+}
+function updateStreakLine(){
+  const el=document.getElementById("streakLine"); if(!el) return; const n=streakCount();
+  el.innerHTML = n ? `🔥 <b>${n}-day streak</b>${practiceDays().has(dayKey(0))?"":" · practice today to keep it going"}` : "Seven ways to practice your verses and have fun doing it.";
+}
+function streakHTML(){
+  const d=practiceDays(), n=streakCount(), today=practiceDays().has(dayKey(0));
+  const week=[...Array(7)].map((_,i)=>{ const k=dayKey(i-6); const [y,m,dd]=k.split("-").map(Number); const lbl=new Date(y,m-1,dd).toLocaleDateString(undefined,{weekday:"narrow"}); return `<span class="${d.has(k)?"on":""}">${lbl}</span>`; }).join("");
+  return `<div class="streak"><div class="num">🔥${n}</div><div><div style="font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;color:var(--gold-l)">${n===1?"day":"days"} in a row</div>
+    <div style="font-family:'Cormorant Garamond',serif;font-size:1rem">${today?"You practiced today. Well done!":"Finish any game or test today to "+(n?"keep your streak":"start a streak")+"."}</div>
+    <div class="days">${week}</div></div></div>`;
+}
+
+/* ---- hub ---- */
+const GAMES = [
+  ["builder","🧱","Verse Builder","Tap the scrambled words in the right order."],
+  ["missing","❓","Missing Word","Pick the word that fills the gap. 10 rounds."],
+  ["match","🃏","Match-Up","Flip cards to match verses with references."],
+  ["clock","⏱️","Beat the Clock","Type first letters fast. Beat your best time."],
+  ["books","📚","Books of the Bible","Put the books in the right order."],
+  ["where","📍","Where Is It Found?","See a verse, name its book, chapter and verse."],
+];
+let G=null, gameVerseId=null;
+function openGames(){ listView.classList.add("hidden"); gamesView.classList.remove("hidden"); window.scrollTo(0,0); renderGameHub(); }
+function renderGameHub(){
+  G=null; gameSink=null; document.getElementById("gamesBack").textContent="← All verses";
+  document.getElementById("gameArea").innerHTML = `<h2 class="label">Games</h2>${streakHTML()}
+    <div class="gtiles">${GAMES.map(([id,ic,n,d])=>`<button class="gtile" onclick="startGame('${id}')"><span class="gi">${ic}</span><span class="gn">${n}</span><span class="gd">${d}</span></button>`).join("")}</div>`;
+}
+function gamesBack(){
+  if(G){ clearInterval(G.timer); renderGameHub(); window.scrollTo(0,0); return; }
+  gameSink=null; gamesView.classList.add("hidden"); listView.classList.remove("hidden"); renderList();
+}
+function gameVerses(){ return verses.filter(v=>v.text && words(v.text).length>=3); }
+function pickDefaultVerse(){
+  const vs=gameVerses(); if(!vs.length) return null;
+  return vs.find(v=>v.id===gameVerseId) || vs.find(v=>v.day===dayKey(0)) || vs[0];
+}
+function versePicker(onchange){
+  const vs=gameVerses(), cur=pickDefaultVerse();
+  return `<select class="vpick" onchange="gameVerseId=+this.value;${onchange}">${vs.map(v=>`<option value="${v.id}" ${v.id===cur.id?"selected":""}>${esc(refShort(v))}${v.day===dayKey(0)?" · today":""}</option>`).join("")}</select>`;
+}
+function startGame(id){
+  document.getElementById("gamesBack").textContent="← Games"; window.scrollTo(0,0);
+  if(id==="where"){ quizFromGames=true; gamesView.classList.add("hidden"); startQuiz(); return; }
+  if(id!=="books" && !gameVerses().length){ document.getElementById("gameArea").innerHTML=`<p class="hint">Add a verse first, then come back to play.</p>`; G={}; return; }
+  ({builder:gBuilder, missing:gMissing, match:gMatch, clock:gClock, books:gBooks})[id]();
+}
+const gArea = () => document.getElementById("gameArea");
+function stars(n){ return "★".repeat(n)+"☆".repeat(3-n); }
+function finishCard(title, line, nStars, againFn){
+  markPracticed();
+  return `<div class="result" style="text-align:center"><div class="bigstars">${stars(nStars)}</div><b>${title}</b><br>${line}
+    <div class="row" style="margin-top:12px;justify-content:center"><button class="primary" onclick="${againFn}">Play again</button><button onclick="renderGameHub()">Other games</button></div></div>`;
+}
+
+/* ---- 1. Verse Builder ---- */
+function chunkWords(text){
+  const ws=words(text); const size = ws.length>36?3 : ws.length>18?2 : 1; const out=[];
+  for(let i=0;i<ws.length;i+=size) out.push(ws.slice(i,i+size).join(" ")); return out;
+}
+function gBuilder(){
+  const v=pickDefaultVerse(); const parts=chunkWords(v.text);
+  G={id:"builder", v, parts, order:shuffle(parts.map((_,i)=>i)), next:0, mistakes:0, t0:Date.now()};
+  renderBuilder();
+}
+function renderBuilder(){
+  const g=G, done=g.next>=g.parts.length;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🧱 Verse Builder</h2><span class="stat">Mistakes: ${g.mistakes}</span></div>
+    ${versePicker("gBuilder()")}
+    <div class="built">${g.next? esc(g.parts.slice(0,g.next).join(" ")) : `<span class="ph">Tap the words below in order…</span>`}</div>
+    ${done ? finishCard(`${esc(refShort(g.v))} built!`, `${g.mistakes===0?"No mistakes. Excellent!":g.mistakes+" mistake"+(g.mistakes>1?"s":"")+"."} Time: ${Math.round((Date.now()-g.t0)/1000)}s`, g.mistakes===0?3:g.mistakes<=3?2:1, "gBuilder()")
+      : `<div class="tiles">${g.order.map(i=>`<button id="bt${i}" class="${i<g.next?"used":""}" onclick="tapPart(${i})">${esc(g.parts[i])}</button>`).join("")}</div>
+         <p class="hint" style="margin-top:12px">${esc(refShort(g.v))}</p>`}`;
+}
+function tapPart(i){
+  const g=G; if(g.parts[i]===g.parts[g.next] ){ // identical words are interchangeable
+    if(i!==g.next){ const a=g.order.indexOf(i), b=g.order.indexOf(g.next); [g.order[a],g.order[b]]=[g.order[b],g.order[a]]; }
+    g.next++; renderBuilder(); return; }
+  g.mistakes++; const el=document.getElementById("bt"+i); el.classList.add("bad","shake"); setTimeout(()=>{ el.classList.remove("bad","shake"); },400);
+  document.querySelector(".ghead .stat").textContent="Mistakes: "+g.mistakes;
+}
+
+/* ---- 2. Missing Word ---- */
+function gMissing(){
+  const v=pickDefaultVerse(); const ws=words(v.text);
+  const candidates=ws.map((w,i)=>i).filter(i=>clean(ws[i]).length>2);
+  const pool=[...new Set(gameVerses().flatMap(x=>words(x.text).map(clean)).filter(w=>w.length>2))];
+  const rounds=[]; let order=shuffle(candidates); while(rounds.length<10 && candidates.length){ if(!order.length) order=shuffle(candidates); rounds.push(order.pop()); }
+  G={id:"missing", v, ws, pool, rounds, r:0, score:0, picked:null};
+  renderMissing();
+}
+function renderMissing(){
+  const g=G;
+  if(g.r>=g.rounds.length){ const n=g.rounds.length; gArea().innerHTML=`<h2 class="label">❓ Missing Word</h2>`+finishCard(`${g.score} of ${n} right`, g.score===n?"Perfect round!":"Try again and aim for a perfect score.", g.score===n?3:g.score>=n*.7?2:1, "gMissing()"); return; }
+  const idx=g.rounds[g.r], answer=clean(g.ws[idx]);
+  if(!g.choices){ const near=g.ws.map(clean).filter(w=>w.length>2&&w!==answer); const others=shuffle([...new Set([...shuffle(near).slice(0,6),...shuffle(g.pool).slice(0,6)])].filter(w=>w!==answer)).slice(0,3); g.choices=shuffle([answer,...others]); }
+  const shown=g.ws.map((w,i)=> i===idx ? (g.picked? `<b style="color:${g.picked===answer?"var(--good)":"var(--bad)"}">${esc(w)}</b>` : "<b>_____</b>") : esc(w)).join(" ");
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">❓ Missing Word</h2><span class="stat">Round ${g.r+1}/${g.rounds.length} · ${g.score} ✓</span></div>
+    ${g.r===0&&!g.picked?versePicker("gMissing()"):""}
+    <div class="wverse">${shown}</div><div class="hint">${esc(refShort(g.v))}</div>
+    <div class="choices">${g.choices.map(c=>{ let cl=""; if(g.picked){ if(c===answer) cl="right"; else if(c===g.picked) cl="wrong"; } return `<button class="${cl}" ${g.picked?"disabled":""} onclick="pickMissing('${c.replace(/'/g,"\\'")}')">${esc(c)}</button>`; }).join("")}</div>
+    ${g.picked?`<button class="primary" onclick="G.r++;G.picked=null;G.choices=null;renderMissing()">${g.r+1<g.rounds.length?"Next →":"See score"}</button>`:""}`;
+}
+function pickMissing(c){ const g=G; g.picked=c; if(c===clean(g.ws[g.rounds[g.r]])) g.score++; renderMissing(); }
+
+/* ---- 3. Match-Up ---- */
+function gMatch(){
+  const vs=shuffle(gameVerses().filter(v=>parseRef(v))).slice(0,6);
+  if(vs.length<2){ G={}; gArea().innerHTML=`<h2 class="label">🃏 Match-Up</h2><p class="hint">You need at least 2 verses to play. Add another verse and come back.</p><button onclick="renderGameHub()">Other games</button>`; return; }
+  const cards=shuffle(vs.flatMap(v=>[{k:v.id,ref:false,txt:words(v.text).slice(0,7).join(" ")+"…"},{k:v.id,ref:true,txt:refShort(v)}]));
+  G={id:"match", cards, up:[], done:new Set(), moves:0, pairs:vs.length, lock:false, t0:Date.now()};
+  renderMatch();
+}
+function renderMatch(){
+  const g=G, finished=g.done.size===g.pairs;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🃏 Match-Up</h2><span class="stat">Moves: ${g.moves} · ${g.done.size}/${g.pairs}</span></div>
+    ${finished ? finishCard("All matched!", `${g.moves} moves in ${Math.round((Date.now()-g.t0)/1000)}s.`, g.moves<=g.pairs+2?3:g.moves<=g.pairs*2?2:1, "gMatch()")
+      : `<p class="hint">Flip two cards. Match each verse with where it's found.</p>
+         <div class="mgrid">${g.cards.map((c,i)=>`<button class="mcard ${c.ref?"ref":""} ${g.done.has(c.k)?"done":g.up.includes(i)?"up":""}" onclick="flipCard(${i})">${esc(c.txt)}</button>`).join("")}</div>`}`;
+}
+function flipCard(i){
+  const g=G; if(g.lock || g.up.includes(i) || g.done.has(g.cards[i].k)) return;
+  g.up.push(i); renderMatch();
+  if(g.up.length===2){ g.moves++; const [a,b]=g.up.map(x=>g.cards[x]);
+    if(a.k===b.k && a.ref!==b.ref){ g.done.add(a.k); g.up=[]; setTimeout(renderMatch,250); }
+    else { g.lock=true; setTimeout(()=>{ g.up=[]; g.lock=false; renderMatch(); },900); } }
+}
+
+/* ---- 4. Beat the Clock ---- */
+function gClock(){
+  const v=pickDefaultVerse(); const ws=words(v.text);
+  G={id:"clock", v, ws, letters:ws.map(firstLetter), pos:0, started:false, t0:0, pen:0, timer:null, done:false};
+  while(G.pos<ws.length && G.letters[G.pos]===null) G.pos++;
+  gameSink=clockKey; renderClock();
+}
+function clockTime(){ const g=G; return g.started ? ((g.done?g.tEnd:Date.now())-g.t0)/1000 + g.pen : 0; }
+function renderClock(){
+  const g=G, best=g.v.bestTime;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">⏱️ Beat the Clock</h2><span class="stat">Best: ${best?best.toFixed(1)+"s":"none yet"}</span></div>
+    ${!g.started?versePicker("gClock()"):""}
+    <div class="row" style="justify-content:space-between;align-items:baseline"><div class="clock" id="clk">${clockTime().toFixed(1)}s</div><span class="stat" style="font-size:.68rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold)">Wrong letter = +2s</span></div>
+    <div class="verse" id="clockVerse" onclick="focusType(true)" style="margin-top:10px">${g.ws.map((w,i)=>`<span class="w ${i<g.pos?"done":"todo"} ${i===g.pos&&!g.done?"current":""}">${esc(w)}</span>`).join(" ")}</div>
+    ${g.done ? finishCard(`${clockTime().toFixed(1)} seconds`, g.newBest?"🎉 New best time!":"Your best is "+best.toFixed(1)+"s. Try again to beat it!", g.newBest?3:clockTime()<=best*1.2?2:1, "gClock()")
+      : `<p class="hint">${g.started?"Keep going!":"Type the first letter of each word. The clock starts on your first letter."}</p><button class="primary" onclick="focusType(true)">⌨️ Tap to type</button>`}`;
+  if(!g.done){ focusType(true); setTimeout(()=>{ const el=document.querySelector("#clockVerse .current"); if(el){ const vv=window.visualViewport, h=vv?vv.height:innerHeight, r=el.getBoundingClientRect(); if(r.top<70||r.bottom>h-60) window.scrollBy({top:r.top-h*0.3,behavior:"smooth"}); } },60); }
+}
+function clockKey(ch){
+  const g=G; if(!g || g.id!=="clock" || g.done) return; ch=ch.toLowerCase(); if(!/[a-z0-9]/.test(ch)) return;
+  if(!g.started){ g.started=true; g.t0=Date.now(); g.timer=setInterval(()=>{ const c=document.getElementById("clk"); if(c) c.textContent=clockTime().toFixed(1)+"s"; },100); }
+  if(ch===g.letters[g.pos]){ g.pos++; while(g.pos<g.ws.length && g.letters[g.pos]===null) g.pos++;
+    if(g.pos>=g.ws.length){ g.done=true; g.tEnd=Date.now(); clearInterval(g.timer); const t=clockTime(); g.newBest=!g.v.bestTime||t<g.v.bestTime; if(g.newBest){ g.v.bestTime=+t.toFixed(1); persist(); } if(!g.v.bestTime){} document.getElementById("typeIn").blur(); }
+    renderClock(); }
+  else { g.pen+=2; const v=document.getElementById("clockVerse"); v.classList.remove("shake"); void v.offsetWidth; v.classList.add("shake"); }
+}
+
+/* ---- 5. Books of the Bible ---- */
+function gBooks(){ G={id:"books", round:0, rounds:6, score:0}; newBooksRound(); }
+function newBooksRound(){
+  const g=G; const span = g.round<2?4 : g.round<4?5 : 6;
+  const start=Math.floor(Math.random()*(BOOKS.length-span)); const set=BOOKS.slice(start,start+span).map((b,i)=>({b,i:start+i}));
+  g.set=set; g.shown=shuffle(set); while(g.shown.every((x,i)=>x.i===set[i].i)) g.shown=shuffle(set); g.next=0; g.miss=0;
+  renderBooks();
+}
+function renderBooks(){
+  const g=G;
+  if(g.round>=g.rounds){ gArea().innerHTML=`<h2 class="label">📚 Books of the Bible</h2>`+finishCard(`${g.score} of ${g.rounds} perfect rounds`, g.score===g.rounds?"You know your Bible order!":"Keep playing and the order will stick.", g.score===g.rounds?3:g.score>=g.rounds/2?2:1, "gBooks()"); return; }
+  const testament = g.set[0].i<39 ? "Old Testament" : "New Testament";
+  const roundDone = g.next>=g.set.length;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">📚 Books of the Bible</h2><span class="stat">Round ${g.round+1}/${g.rounds} · ${g.score} ✓</span></div>
+    <p class="hint">Tap these ${testament} books in the order they appear in the Bible.</p>
+    <div class="built">${g.next? g.set.slice(0,g.next).map(x=>esc(x.b)).join(" → ") : `<span class="ph">First book…</span>`}</div>
+    ${roundDone ? `<p class="hint">${g.miss? "Got there, with "+g.miss+" slip"+(g.miss>1?"s":"")+"." : "Perfect order! ✓"}</p><button class="primary" onclick="G.round++;newBooksRound()">${g.round+1<g.rounds?"Next round →":"See score"}</button>`
+      : `<div class="tiles">${g.shown.map((x,k)=>`<button id="bk${k}" class="${g.set.findIndex(y=>y.i===x.i)<g.next?"used":""}" onclick="tapBook(${k})">${esc(x.b)}</button>`).join("")}</div>`}`;
+}
+function tapBook(k){
+  const g=G, x=g.shown[k];
+  if(x.i===g.set[g.next].i){ g.next++; if(g.next>=g.set.length && !g.miss) g.score++; renderBooks(); return; }
+  g.miss++; const el=document.getElementById("bk"+k); el.classList.add("bad","shake"); setTimeout(()=>el.classList.remove("bad","shake"),400);
+}
+
+updateStreakLine();
 
 /* ---------- Bible picker ---------- */
 const PASTE = {NKJV:"New King James Version", NIV:"New International Version", ESV:"English Standard Version", AMP:"Amplified Bible", TPT:"The Passion Translation"};

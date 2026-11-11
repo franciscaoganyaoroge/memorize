@@ -80,8 +80,14 @@
   #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
   .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
   .hidden{display:none}
+  .fromtag{display:inline-block;font-size:.62rem;letter-spacing:.16em;text-transform:uppercase;color:var(--gold-l);border:1px solid rgba(240,196,106,.5);padding:2px 7px;margin-top:10px}
+  .pubmsg{font-family:'Cormorant Garamond',serif;font-style:italic;color:#e3d9c6;font-size:1.02rem;margin-top:8px}
+  #ownerCard ol{margin:8px 0 0;padding-left:22px;font-family:'Cormorant Garamond',serif;font-size:1.05rem}
+  #ownerCard li{margin:4px 0}
   a.btnlink{display:inline-flex;align-items:center;min-height:44px;padding:11px 16px;border-radius:2px;background:#1f7a4d;color:#fff;text-decoration:none;font-family:Jost,sans-serif;font-size:.74rem;font-weight:500;letter-spacing:.12em;text-transform:uppercase}
   .tshare{margin-top:14px}
+  button.wa{background:#1f7a4d;border-color:#1f7a4d;color:#fff}
+  .today button.wa{color:#fff!important;border-color:#1f7a4d!important}
   .today a.btnlink{color:#fff!important}
   .today .tshare button{border-color:rgba(240,196,106,.6);color:var(--gold-l)}
   .toast{position:fixed;left:50%;top:16px;transform:translateX(-50%);z-index:60;background:var(--night);color:#fbf2e0;padding:12px 18px;border-radius:3px;box-shadow:0 10px 30px -10px rgba(0,0,0,.5);font-size:.95rem;max-width:90vw;border:1px solid rgba(240,196,106,.5)}
@@ -140,6 +146,11 @@
       <div class="script">with Francisca</div>
       <p class="sub">Hide God's word in your heart, one verse at a time.</p>
     </header>
+
+    <div class="card hidden" id="ownerCard">
+      <h2 class="label">Publisher setup (Francisca only)</h2>
+      <div id="ownerBody"></div>
+    </div>
 
     <div class="card today" id="todayCard"></div>
 
@@ -288,25 +299,124 @@ const esc = s => s.replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"'
 const words = t => t.trim().split(/\s+/);
 const firstLetter = w => { const m = w.match(/[A-Za-z0-9]/); return m ? m[0].toLowerCase() : null; };
 
+
+/* ---------- daily verse feed (everyone sees Francisca's published verses) ---------- */
+const GH_OWNER="franciscaoganyaoroge", GH_REPO="memorize", FEED="verses.json", TOKEN_KEY=KEY+"-ghtoken";
+const getToken = () => { try{ return localStorage.getItem(TOKEN_KEY)||""; }catch(e){ return ""; } };
+async function loadFeed(){
+  if(ON_CLAUDE) return;
+  let feed; try{ const r=await fetch(FEED+"?t="+Date.now(),{cache:"no-store"}); if(!r.ok) return; feed=await r.json(); }catch(e){ return; }
+  if(!Array.isArray(feed)) return;
+  let added=null, changed=false;
+  for(const f of feed.slice().reverse()){
+    if(!f || !f.r || !f.t || !/^\d{4}-\d\d-\d\d$/.test(f.d)) continue;
+    const existing = verses.find(v=>v.pub && v.day===f.d);
+    if(existing){
+      if(existing.ref!==f.r || existing.text!==f.t){ existing.ref=f.r; existing.text=f.t; existing.best=null; existing.refBest=null; changed=true; }
+      continue;
+    }
+    const same = verses.find(v=>v.ref===f.r && v.day===f.d);
+    if(same){ if(!same.pub){ same.pub=true; changed=true; } continue; }
+    const v={id:Date.now()+Math.floor(Math.random()*1000), ref:String(f.r).slice(0,120), text:String(f.t).slice(0,2000), day:f.d, best:null, tries:0, pub:true};
+    verses.unshift(v); changed=true; if(f.d===dayKey(0)) added=v;
+  }
+  if(changed){ persist(); if(!listView.classList.contains("hidden")) renderList(); }
+  if(added && !getToken()){ const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 Today's verse from Francisca: <b>${esc(refShort(added))}</b>`; document.body.appendChild(t); setTimeout(()=>t.remove(),5000); }
+}
+const ghHeaders = tok => ({"Authorization":"Bearer "+tok, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"});
+async function publishVerse(id, btn){
+  const v=verses.find(x=>x.id===id), tok=getToken(); if(!v||!tok) return;
+  const msgEl = btn.parentElement.parentElement.querySelector(".pubmsg") || (()=>{ const p=document.createElement("div"); p.className="pubmsg"; btn.parentElement.after(p); return p; })();
+  btn.disabled=true; msgEl.textContent="Publishing…";
+  const url=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${FEED}`;
+  try{
+    let sha=null, feed=[];
+    const g=await fetch(url+"?ref=main&t="+Date.now(),{headers:ghHeaders(tok),cache:"no-store"});
+    if(g.status===401||g.status===403) throw new Error("token");
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ feed=JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))))); }catch(e){ feed=[]; } }
+    const d=v.day||dayKey(0);
+    feed = feed.filter(f=>f && f.d!==d);
+    feed.unshift({r:v.ref, t:v.text, d});
+    feed.sort((a,b)=>b.d.localeCompare(a.d)); feed=feed.slice(0,60);
+    const body={message:`Memory verse for ${d}: ${refShort(v)}`, content: btoa(unescape(encodeURIComponent(JSON.stringify(feed,null,1)))), branch:"main"};
+    if(sha) body.sha=sha;
+    const p=await fetch(url,{method:"PUT",headers:{...ghHeaders(tok),"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(p.status===401||p.status===403) throw new Error("token");
+    if(p.status===409||p.status===422) throw new Error("retry");
+    if(!p.ok) throw new Error("http "+p.status);
+    v.pub=true; v.day=d; persist();
+    msgEl.textContent="Published! Everyone visiting the website will see it within a couple of minutes.";
+    btn.textContent="Published ✓";
+  }catch(e){
+    btn.disabled=false;
+    msgEl.textContent = e.message==="token" ? "Your publishing key isn't working (it may have expired). Open the website with #owner at the end of the address to set a new one."
+      : e.message==="retry" ? "Someone else was updating at the same time. Tap Publish again."
+      : "Couldn't publish. Check your connection and try again.";
+  }
+}
+function renderOwner(){
+  const card=document.getElementById("ownerCard"), body=document.getElementById("ownerBody");
+  const wantSetup = location.hash==="#owner";
+  if(ON_CLAUDE || (!wantSetup)){ card.classList.add("hidden"); return; }
+  card.classList.remove("hidden");
+  const tok=getToken();
+  body.innerHTML = (tok ? `<p class="hint">✓ This phone can publish. A <b>Publish to everyone</b> button appears under today's verse.</p>` : `<p class="hint">Do this once on your own phone so you can publish each day's verse for everyone.</p>`) + `
+    <ol>
+      <li>Open <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noopener" style="color:var(--gold)">github.com/settings/personal-access-tokens/new</a> and sign in.</li>
+      <li><b>Token name:</b> memorize site. <b>Expiration:</b> choose the longest option.</li>
+      <li><b>Repository access:</b> Only select repositories → <b>memorize</b>.</li>
+      <li><b>Permissions → Repository permissions → Contents:</b> Read and write.</li>
+      <li>Tap <b>Generate token</b>, copy it, and paste it below.</li>
+    </ol>
+    <label for="tokIn">Publishing key</label>
+    <input id="tokIn" type="password" autocomplete="off" placeholder="github_pat_…">
+    <div class="row" style="margin-top:10px">
+      <button class="primary" onclick="saveToken()">Check &amp; save</button>
+      ${tok?`<button class="ghost" onclick="forgetToken()">Remove from this phone</button>`:""}
+      <button class="ghost" onclick="location.hash='';renderOwner()">Close</button>
+    </div>
+    <p class="hint" id="tokMsg" style="margin-top:8px">Your key is kept only on this phone and is never shown to visitors.</p>`;
+}
+async function saveToken(){
+  const tok=document.getElementById("tokIn").value.trim(), msg=document.getElementById("tokMsg");
+  if(!tok){ msg.textContent="Paste your key first."; return; }
+  msg.textContent="Checking…";
+  try{
+    const r=await fetch(`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}`,{headers:ghHeaders(tok)});
+    if(!r.ok) throw 0; const j=await r.json();
+    if(!(j.permissions && j.permissions.push)){ msg.textContent="That key can see the site but can't update it. Make sure Contents is set to Read and write."; return; }
+    try{ localStorage.setItem(TOKEN_KEY,tok); }catch(e){ msg.textContent="This browser won't save it. Try Safari or Chrome directly instead of inside WhatsApp."; return; }
+    renderList(); renderOwner();
+    document.getElementById("tokMsg").textContent="Saved! You can now publish. Tap Close, then add today's verse.";
+  }catch(e){ msg.textContent="That key didn't work. Check you copied all of it and picked the memorize repository."; }
+}
+function forgetToken(){ try{ localStorage.removeItem(TOKEN_KEY); }catch(e){} renderOwner(); renderList(); }
+window.addEventListener("hashchange", renderOwner);
+
 /* ---------- share a verse with friends ---------- */
 const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g,"+").replace(/_/g,"/"))));
 function verseLink(v){ const base=shareBase(); if(!base) return ""; return base + "#add=" + b64e(JSON.stringify({r:v.ref, t:v.text, d:v.day||dayKey(0)})); }
-function waHref(v){
-  const link=verseLink(v); if(!link) return "";
-  const msg = `📖 Today's Open Heavens memory verse: ${refShort(v)}\n\n“${v.text}”\n\nTap to practice it (no login needed):\n${link}`;
-  return "https://wa.me/?text=" + encodeURIComponent(msg);
-}
+function shareMsg(v){ return `📖 Today's Open Heavens memory verse: ${refShort(v)}\nPractice it here, no login needed:\n${verseLink(v)}`; }
+function waHref(v){ return verseLink(v) ? "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareMsg(v)) : ""; }
 function shareBtns(v){
-  const h=waHref(v); if(!h) return "";
-  return `<a class="btnlink" href="${h}" target="_blank" rel="noopener">Send to friends on WhatsApp</a>
-          <button onclick="copyLink(${v.id}, this)">Copy link</button>`;
+  if(!verseLink(v)) return "";
+  // Website: use the phone's Share menu (reliable). Claude page: a plain WhatsApp link.
+  const main = (!ON_CLAUDE && navigator.share)
+    ? `<button class="wa" onclick="shareVerse(${v.id})">Share on WhatsApp</button>`
+    : `<a class="btnlink" href="${waHref(v)}" target="_blank" rel="noopener">Share on WhatsApp</a>`;
+  return main + `<button onclick="copyLink(${v.id}, this)">Copy message</button>`;
+}
+async function shareVerse(id){
+  const v=verses.find(x=>x.id===id);
+  try{ await navigator.share({text: shareMsg(v)}); }
+  catch(e){ if(e && e.name!=="AbortError") location.href = waHref(v); }
 }
 async function copyLink(id, btn){
-  const v=verses.find(x=>x.id===id); const link=verseLink(v);
-  try{ await navigator.clipboard.writeText(link); btn.textContent="Copied ✓"; }
-  catch(e){ const box=document.createElement("textarea"); box.value=link; btn.after(box); box.select(); btn.textContent="Copy the link below"; }
-  setTimeout(()=>{ btn.textContent="Copy link"; },2500);
+  const v=verses.find(x=>x.id===id); const text=shareMsg(v);
+  try{ await navigator.clipboard.writeText(text); btn.textContent="Copied ✓ Paste in WhatsApp"; }
+  catch(e){ const box=document.createElement("textarea"); box.value=text; btn.after(box); box.select(); btn.textContent="Copy the message below"; }
+  setTimeout(()=>{ btn.textContent="Copy message"; },3000);
 }
 function importFromHash(){
   const m = location.hash.match(/^#add=([A-Za-z0-9_-]+)/); if(!m) return;
@@ -332,10 +442,12 @@ function renderToday(){
       <span class="tref">${esc(v.ref)}</span>
       <span class="row">${v.best!=null?`<span class="badge">${v.best===100?"✓ ":""}${v.best}%</span>`:""}
       <button class="primary" onclick="openVerse(${v.id})">Practice</button></span></div>
+      ${v.pub && !getToken() ? `<span class="fromtag">From Francisca</span>` : ""}
+      ${getToken() && !ON_CLAUDE ? `<div class="row tshare"><button class="primary" onclick="publishVerse(${v.id}, this)">${v.pub?"Publish again":"Publish to everyone"}</button></div>` : ""}
       ${waHref(v)?`<div class="row tshare">${shareBtns(v)}</div>`:""}`).join('<div style="height:12px"></div>');
   } else {
     h += `<div class="ttitle">Today's memory verse</div>
-      <p class="hint">Look up today's memory verse in your Open Heavens devotional and add it here, or tap the link Francisca sends on WhatsApp.</p>
+      <p class="hint">${getToken() ? "Look up today's memory verse in your Open Heavens devotional, add it here, then tap <b>Publish to everyone</b>." : "Francisca's verse for today will appear here once she shares it. You can also add one yourself."}</p>
       <button class="primary" onclick="showAdd(true)">+ Add today's verse</button>`;
   }
   if(yv.length){
@@ -385,7 +497,7 @@ function openVerse(id){
   cur = verses.find(v=>v.id===id); if(!cur) return;
   listView.classList.add("hidden"); practiceView.classList.remove("hidden");
   document.getElementById("notesIn").value = cur.notes || "";
-  document.getElementById("practiceShare").innerHTML = waHref(cur) ? `<div class="daytag" style="width:100%">Or send a link so friends can practice it on their own phone:</div>${shareBtns(cur)}` : "";
+  document.getElementById("practiceShare").innerHTML = verseLink(cur) ? `<div class="daytag" style="width:100%">Or send a link so friends can practice it on their own phone:</div>${shareBtns(cur)}` : "";
   setMode("read"); window.scrollTo(0,0);
 }
 function backToList(){ practiceView.classList.add("hidden"); listView.classList.remove("hidden"); test=null; renderList(); }
@@ -781,6 +893,8 @@ document.getElementById("notesIn").addEventListener("input", e=>{ if(cur){ cur.n
 document.querySelectorAll(".verse-item .preview").forEach(()=>{});
 importFromHash();
 renderList();
+renderOwner();
+loadFeed();
 </script>
 </body>
 </html>

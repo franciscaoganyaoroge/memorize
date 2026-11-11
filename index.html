@@ -171,12 +171,20 @@
         <div class="pick">
           <div><label for="pVer">Version</label>
             <select id="pVer">
-              <option value="NKJV">NKJV – New King James</option>
-              <option value="KJV">KJV – King James</option>
-              <option value="NHEB">NHEB – New Heart English</option>
-              <option value="ASV">ASV – American Standard</option>
-              <option value="BBE">BBE – Basic English</option>
-              <option value="YLT">YLT – Young's Literal</option>
+              <optgroup label="Fills in automatically">
+                <option value="KJV">KJV – King James</option>
+                <option value="NHEB">NHEB – New Heart English</option>
+                <option value="ASV">ASV – American Standard</option>
+                <option value="BBE">BBE – Basic English</option>
+                <option value="YLT">YLT – Young's Literal</option>
+              </optgroup>
+              <optgroup label="Copy &amp; paste from Bible Gateway">
+                <option value="NKJV">NKJV – New King James</option>
+                <option value="NIV">NIV – New International</option>
+                <option value="ESV">ESV – English Standard</option>
+                <option value="AMP">AMP – Amplified</option>
+                <option value="TPT">TPT – The Passion Translation</option>
+              </optgroup>
             </select></div>
           <div><label for="pBook">Book</label><select id="pBook"></select></div>
           <div><label for="pCh">Chapter</label><select id="pCh"></select></div>
@@ -828,6 +836,7 @@ function showFull(src){ const f=document.getElementById("fullShot"); f.querySele
 function closeStatus(){ statusView.classList.add("hidden"); practiceView.classList.remove("hidden"); }
 
 /* ---------- Bible picker ---------- */
+const PASTE = {NKJV:"New King James Version", NIV:"New International Version", ESV:"English Standard Version", AMP:"Amplified Bible", TPT:"The Passion Translation"};
 const BOOKS = ["Genesis","Exodus","Leviticus","Numbers","Deuteronomy","Joshua","Judges","Ruth","1 Samuel","2 Samuel","1 Kings","2 Kings","1 Chronicles","2 Chronicles","Ezra","Nehemiah","Esther","Job","Psalm","Proverbs","Ecclesiastes","Song of Solomon","Isaiah","Jeremiah","Lamentations","Ezekiel","Daniel","Hosea","Joel","Amos","Obadiah","Jonah","Micah","Nahum","Habakkuk","Zephaniah","Haggai","Zechariah","Malachi","Matthew","Mark","Luke","John","Acts","Romans","1 Corinthians","2 Corinthians","Galatians","Ephesians","Philippians","Colossians","1 Thessalonians","2 Thessalonians","1 Timothy","2 Timothy","Titus","Philemon","Hebrews","James","1 Peter","2 Peter","1 John","2 John","3 John","Jude","Revelation"];
 const cache = {};
 const pVer=document.getElementById("pVer"), pBook=document.getElementById("pBook"), pCh=document.getElementById("pCh"),
@@ -835,10 +844,10 @@ const pVer=document.getElementById("pVer"), pBook=document.getElementById("pBook
 let bookData = null;
 const opts = (n, sel=1) => Array.from({length:n},(_,i)=>`<option value="${i+1}" ${i+1===sel?"selected":""}>${i+1}</option>`).join("");
 pBook.innerHTML = '<option value="">Choose a book…</option>' + BOOKS.map((b,i)=>`<option value="${i+1}">${b}</option>`).join("");
-try{ pVer.value = localStorage.getItem(KEY+"-ver") || "NKJV"; }catch(e){}
+try{ pVer.value = localStorage.getItem(KEY+"-ver2") || "KJV"; }catch(e){ pVer.value="KJV"; }
 
 async function loadBook(){
-  const ver=pVer.value==='NKJV'?'KJV':pVer.value, b=pBook.value; if(!b){ bookData=null; return false; }
+  const ver=PASTE[pVer.value]?'KJV':pVer.value, b=pBook.value; if(!b){ bookData=null; return false; }
   const k=ver+"/"+b;
   if(!cache[k]){
     pStatus.textContent = "Loading…";
@@ -868,21 +877,23 @@ function fillVerse(){
   const refPlain = `${BOOKS[pBook.value-1]} ${ch}:${f}${t>f?"-"+t:""}`;
   refIn.value = `${refPlain} (${pVer.value})`;
   const pLink = document.getElementById("pLink");
-  if(pVer.value==="NKJV"){
+  if(PASTE[pVer.value]){
+    const ver=pVer.value;
     textIn.value = "";
-    pLink.href = "https://www.biblegateway.com/passage/?search="+encodeURIComponent(refPlain)+"&version=NKJV";
-    pLink.textContent = "Open "+refPlain+" (NKJV) in Bible Gateway ↗";
+    pLink.href = "https://www.biblegateway.com/passage/?search="+encodeURIComponent(refPlain)+"&version="+ver;
+    pLink.textContent = "Open "+refPlain+" ("+ver+") on Bible Gateway ↗";
     pLink.classList.remove("hidden");
-    pStatus.textContent = "The NKJV is copyrighted, so it can't fill in by itself. Open it with the link below, copy the verse, come back and paste it in the box.";
+    pStatus.innerHTML = `<b>You'll need to copy and paste this one.</b> The ${PASTE[ver]} is owned by its publisher, so this free site isn't allowed to include its text. Tap the link below to open the verse on Bible Gateway, copy it, come back and paste it into the box. It only takes a few seconds. KJV, NHEB, ASV, BBE and YLT are free to use, so those fill in by themselves.`;
     return;
   }
   pLink.classList.add("hidden");
+  pStatus.textContent = "";
   textIn.value = text;
   const wc = words(text).length;
   pStatus.textContent = wc>80 ? `That's ${wc} words. Shorter passages (1–3 verses) are easier to learn; you can always add the next part later.` : "";
 }
-pVer.addEventListener("change", async ()=>{ try{localStorage.setItem(KEY+"-ver",pVer.value)}catch(e){}
-  if(!pBook.value) return; const ch=pCh.value, f=pFrom.value, t=pTo.value;
+pVer.addEventListener("change", async ()=>{ try{localStorage.setItem(KEY+"-ver2",pVer.value)}catch(e){}
+  if(!pBook.value){ pStatus.innerHTML = PASTE[pVer.value] ? `<b>You'll need to copy and paste for ${pVer.value}.</b> It's owned by its publisher, so this free site can't include it. Choose the book, chapter and verse, and you'll get a link to Bible Gateway to copy it from.` : ""; document.getElementById("pLink").classList.add("hidden"); return; } const ch=pCh.value, f=pFrom.value, t=pTo.value;
   if(await loadBook()){ pStatus.textContent=""; pCh.value=ch; const n=bookData[ch-1].length; pFrom.innerHTML=opts(n,+f); pTo.innerHTML=opts(n,+t); fillVerse(); } });
 pBook.addEventListener("change", onBook);
 pCh.addEventListener("change", onCh);

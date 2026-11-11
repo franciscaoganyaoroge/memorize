@@ -80,6 +80,27 @@
   #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
   .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
   .hidden{display:none}
+  .greet{margin-top:14px;font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--night);font-weight:600}
+  .greet .fl{font-family:Jost,sans-serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-left:6px}
+  .greet .edit{background:none;border:none;color:var(--muted);font-size:.66rem;padding:0 4px;min-height:0;letter-spacing:.1em}
+  .namebox{display:flex;gap:8px;justify-content:center;max-width:340px;margin:8px auto 0}
+  .namebox input{text-align:center}
+  .weekly.due{border-color:var(--gold);box-shadow:inset 0 0 0 4px rgba(251,244,230,.94),inset 0 0 0 5px rgba(185,122,34,.8),0 10px 30px -18px rgba(27,37,64,.45)}
+  .wstats{display:flex;gap:18px;margin:10px 0 4px}
+  .wstats div{font-family:'Cormorant Garamond',serif;font-size:1.05rem;color:var(--muted)}
+  .wstats b{display:block;font-family:'Cormorant Garamond',serif;font-size:1.7rem;color:var(--night);line-height:1}
+  .wlist{margin:10px 0 0;padding:0;list-style:none}
+  .wlist li{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-top:1px solid rgba(216,196,156,.7);font-family:'Cormorant Garamond',serif;font-size:1.08rem}
+  .wlist .low{color:var(--bad)}
+  .mcols{display:grid;grid-template-columns:1.6fr 1fr;gap:10px;align-items:start}
+  .mverse{border:1px solid var(--rule);background:#fffaf0;padding:10px;margin-bottom:8px;font-family:'Cormorant Garamond',serif;font-size:1.02rem;line-height:1.3;min-height:64px;transition:background .15s}
+  .mverse.hot{background:#f6e3b8;border-color:var(--gold)}
+  .mverse.ok{background:#e7f1e9;border-color:var(--good)}
+  .mverse .tag{display:block;margin-top:6px;font-family:Jost,sans-serif;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--good);font-weight:600}
+  .mchip{display:block;width:100%;margin-bottom:8px;text-transform:none;letter-spacing:.02em;font-size:.82rem;font-weight:600;touch-action:none;user-select:none;-webkit-user-select:none;background:var(--night);color:var(--parch);border-color:var(--night);padding:10px 8px}
+  .mchip.sel{background:var(--gold);border-color:var(--gold);color:#fff}
+  .mchip.gone{visibility:hidden}
+  .dragghost{position:fixed;z-index:70;pointer-events:none;padding:10px 12px;background:var(--gold);color:#fff;font-family:Jost,sans-serif;font-size:.82rem;font-weight:600;box-shadow:0 10px 24px -8px rgba(0,0,0,.45);transform:translate(-50%,-60%)}
   .gtiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
   .gtile{display:flex;flex-direction:column;align-items:flex-start;gap:4px;text-align:left;text-transform:none;letter-spacing:0;padding:14px;min-height:120px;border:1px solid var(--rule);background:#fffaf0;font-family:'Cormorant Garamond',serif}
   .gtile:hover{background:#fff4df}
@@ -177,6 +198,7 @@
       <h1>Memorize Today's<br><em>Open Heavens</em></h1>
       <div class="script">with Francisca</div>
       <p class="sub">Hide God's word in your heart, one verse at a time.</p>
+      <div id="greet" class="greet"></div>
     </header>
 
     <div class="card hidden" id="ownerCard">
@@ -185,6 +207,8 @@
     </div>
 
     <div class="card today" id="todayCard"></div>
+
+    <div class="card" id="weeklyCard"></div>
 
     <div class="card" id="gamesCard">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:14px">
@@ -450,6 +474,30 @@ async function saveToken(){
 function forgetToken(){ try{ localStorage.removeItem(TOKEN_KEY); }catch(e){} renderOwner(); renderList(); }
 window.addEventListener("hashchange", renderOwner);
 
+
+/* ---------- first name & greeting ---------- */
+const NAME_KEY = KEY+"-name";
+const getName = () => { try{ return (localStorage.getItem(NAME_KEY)||"").trim(); }catch(e){ return ""; } };
+let editingName=false;
+function renderGreet(){
+  const el=document.getElementById("greet"); if(!el) return;
+  const name=getName();
+  if(!name || editingName){
+    el.innerHTML = `<div style="font-weight:500;font-size:1.05rem;color:var(--muted);font-style:italic">${name?"Change your name":"Welcome! What's your first name?"}</div>
+      <div class="namebox"><input id="nameIn" maxlength="30" placeholder="First name" value="${esc(name)}" autocomplete="given-name"><button class="primary" onclick="saveName()">Save</button></div>`;
+    return;
+  }
+  const h=new Date().getHours(), part = h<12?"Good morning":h<17?"Good afternoon":"Good evening";
+  const n = typeof streakCount==="function" ? streakCount() : 0;
+  el.innerHTML = `${part}, ${esc(name)}${n?`<span class="fl">🔥 ${n}-day streak</span>`:""}<button class="edit" onclick="editingName=true;renderGreet()">edit</button>`;
+}
+function saveName(){
+  const v=(document.getElementById("nameIn").value||"").trim().replace(/\s+/g," ").slice(0,30);
+  if(!v) return; try{ localStorage.setItem(NAME_KEY, v); }catch(e){} editingName=false; renderGreet();
+}
+document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="nameIn"){ e.preventDefault(); saveName(); } });
+const cheer = () => { const n=getName(); return n ? `Well done, ${esc(n)}! ` : "Well done! "; };
+
 /* ---------- share a verse with friends ---------- */
 const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g,"+").replace(/_/g,"/"))));
@@ -515,7 +563,7 @@ function renderToday(){
 
 /* ---------- list ---------- */
 function renderList(){
-  renderToday();
+  renderToday(); renderGreet(); if(typeof renderWeekly==='function') renderWeekly();
   const mine = verses.filter(v=>!v.day), oh = verses.filter(v=>v.day && v.day!==dayKey(0));
   document.getElementById("list").innerHTML = mine.length ? itemsHTML(mine) : '<p class="hint">Nothing here yet. Tap “Add verse” to start your own study list.</p>';
   document.getElementById("ohCard").classList.toggle("hidden", !oh.length);
@@ -545,7 +593,7 @@ function hideAdd(){ addingToday=false; document.getElementById("addForm").classL
 function saveVerse(){
   const ref = refIn.value.trim(), text = textIn.value.trim().replace(/\s+/g," ");
   if(!ref || !text){ (ref?textIn:refIn).classList.add("shake"); setTimeout(()=>{refIn.classList.remove("shake");textIn.classList.remove("shake")},300); return; }
-  verses.unshift({id:Date.now(), ref, text, best:null, tries:0, ...(addingToday?{day:dayKey(0)}:{})});
+  verses.unshift({id:Date.now(), added:Date.now(), ref, text, best:null, tries:0, ...(addingToday?{day:dayKey(0)}:{})});
   persist(); hideAdd(); renderList();
 }
 
@@ -739,6 +787,7 @@ function renderWhere(area, v, onNext){
       ${refHook(v)}
       <div class="row" style="margin-top:8px">${onNext?`<button class="primary" onclick="W.onNext()">Next →</button>`:`<button class="primary" onclick="W=null;render()">Try again</button>`}</div></div>`;
   }
+  if(G && G.id==="weekly" && G.phase==="where"){ const c=G.cur; h = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🗓️ Weekly review</h2><span class="stat">Verse ${G.i+1} of ${G.vs.length} · words ${c.wordsPct}%</span></div><div class="stage" style="margin-bottom:6px">Part 2 · Where is it found?</div>` + h; }
   area.innerHTML = h;
   if(W.step==="nums") setTimeout(()=>{ const i=document.getElementById("wCh"); i&&i.focus(); },50);
 }
@@ -893,6 +942,100 @@ function showFull(src){ const f=document.getElementById("fullShot"); f.querySele
 function closeStatus(){ statusView.classList.add("hidden"); practiceView.classList.remove("hidden"); }
 
 
+
+/* ---------- weekly review ---------- */
+const WEEK_KEY = KEY+"-weekly";
+function weeklyHistory(){ try{ return JSON.parse(localStorage.getItem(WEEK_KEY)||"[]"); }catch(e){ return []; } }
+function saveWeekly(h){ try{ localStorage.setItem(WEEK_KEY, JSON.stringify(h.sort((a,b)=>a.week.localeCompare(b.week)).slice(-104))); }catch(e){} }
+function weekStart(offsetWeeks=0){ const d=new Date(); d.setHours(12,0,0,0); d.setDate(d.getDate()-d.getDay()+offsetWeeks*7);
+  return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+function weeklyStreak(){ const h=new Set(weeklyHistory().map(w=>w.week)); let n=0, off=h.has(weekStart(0))?0:-1; while(h.has(weekStart(off))){ n++; off--; } return n; }
+function weekVerses(){
+  const from=dayKey(-6), cutoff=Date.now()-7*864e5;
+  return verses.filter(v=>{
+    if(v.day) return v.day>=from && v.day<=dayKey(0);
+    const t = v.added || (v.id>1.6e12 && v.id<Date.now()+1e5 ? v.id : 0);
+    return t>=cutoff;
+  });
+}
+function renderWeekly(){
+  const el=document.getElementById("weeklyCard"); if(!el) return;
+  const vs=weekVerses(), h=weeklyHistory(), last=h[h.length-1], done=h.find(w=>w.week===weekStart(0)), ws=weeklyStreak();
+  const sunday = new Date().getDay()===0;
+  el.className = "card weekly" + ((sunday && !done && vs.length) ? " due" : "");
+  el.innerHTML = `<h2 class="label">Weekly review</h2>
+    <div class="daytag">${sunday && !done ? "It's review day! " : ""}A test on everything you learned in the last 7 days.</div>
+    <div class="wstats">
+      <div><b>${vs.length}</b>verse${vs.length===1?"":"s"} this week</div>
+      <div><b>${last?last.score+"%":"–"}</b>${last?"last review":"no review yet"}</div>
+      <div><b>${ws?"🗓️"+ws:"0"}</b>week${ws===1?"":"s"} in a row</div>
+    </div>
+    ${done ? `<p class="hint" style="margin:8px 0">✓ Done for this week (${done.score}%). You can take it again to improve.</p>` : ""}
+    <button class="primary" ${vs.length?"":"disabled"} onclick="startWeekly()">${done?"Take it again":"Start review"}</button>
+    ${vs.length?"":`<p class="hint" style="margin-top:8px">Add a verse this week to unlock your review.</p>`}`;
+}
+function startWeekly(){
+  const vs=shuffle(weekVerses()); if(!vs.length) return;
+  listView.classList.add("hidden"); gamesView.classList.remove("hidden"); window.scrollTo(0,0);
+  document.getElementById("gamesBack").textContent="← All verses";
+  G={id:"weekly", from:"main", vs, i:0, phase:"type", results:[]};
+  weeklyItem();
+}
+function weeklyItem(){
+  const g=G; if(g.i>=g.vs.length) return weeklyDone();
+  const v=g.vs[g.i], ws=words(v.text);
+  g.cur={v, ws, letters:ws.map(firstLetter), pos:0, wrong:0, misses:0, state:ws.map(()=>"todo")};
+  while(g.cur.pos<ws.length && g.cur.letters[g.cur.pos]===null){ g.cur.state[g.cur.pos]="done"; g.cur.pos++; }
+  g.phase="type"; gameSink=weeklyKey; renderWeeklyType();
+}
+function renderWeeklyType(){
+  const g=G, c=g.cur;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🗓️ Weekly review</h2><span class="stat">Verse ${g.i+1} of ${g.vs.length}</span></div>
+    <div class="stage" style="margin-bottom:4px">Part 1 · Say it and type the first letter of each word</div>
+    <div class="verse" id="wkVerse" onclick="focusType(true)">${c.ws.map((w,i)=>`<span class="w ${c.state[i]} ${i===c.pos?"current":""}">${esc(w)}</span>`).join(" ")}</div>
+    <p class="hint">No peeking at the reference: you'll name it next. Miss a letter twice and the word is shown in red.</p>
+    <div class="row"><button class="primary" onclick="focusType(true)">⌨️ Tap to type</button><button onclick="weeklyKey(null,true)">Show this word</button></div>`;
+  focusType(true);
+  setTimeout(()=>{ const el=document.querySelector("#wkVerse .current"); if(el){ const vv=window.visualViewport, h=vv?vv.height:innerHeight, r=el.getBoundingClientRect(); if(r.top<70||r.bottom>h-60) window.scrollBy({top:r.top-h*0.3,behavior:"smooth"}); } },60);
+}
+function weeklyKey(ch, give){
+  const g=G; if(!g || g.id!=="weekly" || g.phase!=="type") return; const c=g.cur;
+  if(!give){ ch=(ch||"").toLowerCase(); if(!/[a-z0-9]/.test(ch)) return; }
+  if(!give && ch===c.letters[c.pos]){ c.state[c.pos]= c.wrong?"miss":"done"; if(c.wrong) c.misses++; }
+  else { c.wrong++; if(c.wrong<2 && !give){ const el=document.getElementById("wkVerse"); el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); return; } c.state[c.pos]="miss"; c.misses++; }
+  c.wrong=0; c.pos++; while(c.pos<c.ws.length && c.letters[c.pos]===null){ c.state[c.pos]="done"; c.pos++; }
+  if(c.pos>=c.ws.length){
+    const total=c.letters.filter(l=>l!==null).length; c.wordsPct=Math.round(100*(total-c.misses)/total);
+    c.v.best=Math.max(c.v.best??0, c.wordsPct); persist();
+    gameSink=null; document.getElementById("typeIn").blur(); g.phase="where";
+    if(parseRef(c.v)){
+      W=null; const area=gArea();
+      renderWhere(area, c.v, ()=>{ g.results.push({v:c.v, words:c.wordsPct, ref:c.refPts??0}); g.i++; weeklyItem(); });
+      W.onQuiz = p=>{ c.refPts=Math.round(p/3*100); };
+
+    } else { g.results.push({v:c.v, words:c.wordsPct, ref:null}); g.i++; weeklyItem(); }
+    return;
+  }
+  renderWeeklyType();
+}
+function weeklyDone(){
+  const g=G, r=g.results;
+  const wAvg=Math.round(r.reduce((a,x)=>a+x.words,0)/r.length);
+  const refs=r.filter(x=>x.ref!=null), rAvg=refs.length?Math.round(refs.reduce((a,x)=>a+x.ref,0)/refs.length):null;
+  const score = rAvg==null ? wAvg : Math.round(wAvg*0.7 + rAvg*0.3);
+  const h=weeklyHistory().filter(w=>w.week!==weekStart(0)); h.push({week:weekStart(0), date:dayKey(0), score, words:wAvg, refs:rAvg, count:r.length}); saveWeekly(h);
+  markPracticed();
+  const weak=r.filter(x=>x.words<80 || (x.ref!=null && x.ref<67));
+  const n=getName();
+  gArea().innerHTML = `<h2 class="label">🗓️ Weekly review</h2>
+    <div class="result" style="text-align:center"><div class="bigstars">${stars(score>=90?3:score>=70?2:1)}</div><b>${score}% this week</b><br>
+      ${score>=90?(n?`Excellent, ${esc(n)}! `:"Excellent! ")+"God's word is taking root.":score>=70?cheer()+"A little more practice on the ones below.":"Good effort. Spend a few minutes on the verses below this week."}
+      <div style="margin-top:6px;font-size:1rem">Words ${wAvg}%${rAvg!=null?` · Where it's found ${rAvg}%`:""} · 🗓️ ${weeklyStreak()} week${weeklyStreak()===1?"":"s"} in a row</div></div>
+    <ul class="wlist">${r.map(x=>`<li><span>${esc(refShort(x.v))}</span><span class="${(x.words<80||(x.ref!=null&&x.ref<67))?"low":""}">${x.words}%${x.ref!=null?` · 📍${x.ref}%`:""}</span></li>`).join("")}</ul>
+    ${weak.length?`<p class="hint" style="margin-top:10px">Practice these again: ${weak.map(x=>`<a href="#" style="color:var(--gold)" onclick="gamesView.classList.add('hidden');openVerse(${x.v.id});return false">${esc(refShort(x.v))}</a>`).join(", ")}</p>`:""}
+    <div class="row" style="margin-top:12px"><button class="primary" onclick="gamesBack()">Done</button></div>`;
+}
+
 /* =================== GAMES =================== */
 const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };
 const clean = w => w.replace(/[^A-Za-z0-9']/g,"").toLowerCase();
@@ -906,6 +1049,7 @@ function streakCount(){
   while(d.has(dayKey(off))){ n++; off--; } return n;
 }
 function updateStreakLine(){
+  renderGreet();
   const el=document.getElementById("streakLine"); if(!el) return; const n=streakCount();
   el.innerHTML = n ? `🔥 <b>${n}-day streak</b>${practiceDays().has(dayKey(0))?"":" · practice today to keep it going"}` : "Seven ways to practice your verses and have fun doing it.";
 }
@@ -921,7 +1065,7 @@ function streakHTML(){
 const GAMES = [
   ["builder","🧱","Verse Builder","Tap the scrambled words in the right order."],
   ["missing","❓","Missing Word","Pick the word that fills the gap. 10 rounds."],
-  ["match","🃏","Match-Up","Flip cards to match verses with references."],
+  ["match","🃏","Match-Up","Drag each reference onto its verse."],
   ["clock","⏱️","Beat the Clock","Type first letters fast. Beat your best time."],
   ["books","📚","Books of the Bible","Put the books in the right order."],
   ["where","📍","Where Is It Found?","See a verse, name its book, chapter and verse."],
@@ -934,6 +1078,7 @@ function renderGameHub(){
     <div class="gtiles">${GAMES.map(([id,ic,n,d])=>`<button class="gtile" onclick="startGame('${id}')"><span class="gi">${ic}</span><span class="gn">${n}</span><span class="gd">${d}</span></button>`).join("")}</div>`;
 }
 function gamesBack(){
+  if(G && G.from==="main"){ G=null; gameSink=null; W=null; gamesView.classList.add("hidden"); listView.classList.remove("hidden"); renderList(); window.scrollTo(0,0); return; }
   if(G){ clearInterval(G.timer); renderGameHub(); window.scrollTo(0,0); return; }
   gameSink=null; gamesView.classList.add("hidden"); listView.classList.remove("hidden"); renderList();
 }
@@ -956,7 +1101,7 @@ const gArea = () => document.getElementById("gameArea");
 function stars(n){ return "★".repeat(n)+"☆".repeat(3-n); }
 function finishCard(title, line, nStars, againFn){
   markPracticed();
-  return `<div class="result" style="text-align:center"><div class="bigstars">${stars(nStars)}</div><b>${title}</b><br>${line}
+  return `<div class="result" style="text-align:center"><div class="bigstars">${stars(nStars)}</div><b>${title}</b><br>${nStars>=2?cheer():""}${line}
     <div class="row" style="margin-top:12px;justify-content:center"><button class="primary" onclick="${againFn}">Play again</button><button onclick="renderGameHub()">Other games</button></div></div>`;
 }
 
@@ -1010,27 +1155,48 @@ function renderMissing(){
 }
 function pickMissing(c){ const g=G; g.picked=c; if(c===clean(g.ws[g.rounds[g.r]])) g.score++; renderMissing(); }
 
-/* ---- 3. Match-Up ---- */
+/* ---- 3. Match-Up (all cards showing: drag a reference onto its verse, or tap one then the other) ---- */
 function gMatch(){
   const vs=shuffle(gameVerses().filter(v=>parseRef(v))).slice(0,6);
   if(vs.length<2){ G={}; gArea().innerHTML=`<h2 class="label">🃏 Match-Up</h2><p class="hint">You need at least 2 verses to play. Add another verse and come back.</p><button onclick="renderGameHub()">Other games</button>`; return; }
-  const cards=shuffle(vs.flatMap(v=>[{k:v.id,ref:false,txt:words(v.text).slice(0,7).join(" ")+"…"},{k:v.id,ref:true,txt:refShort(v)}]));
-  G={id:"match", cards, up:[], done:new Set(), moves:0, pairs:vs.length, lock:false, t0:Date.now()};
+  G={id:"match", left:shuffle(vs), right:shuffle(vs), done:new Set(), sel:null, mistakes:0, t0:Date.now()};
   renderMatch();
 }
+function snippet(v){ const w=words(v.text); return w.length>16 ? w.slice(0,16).join(" ")+"…" : v.text; }
 function renderMatch(){
-  const g=G, finished=g.done.size===g.pairs;
-  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🃏 Match-Up</h2><span class="stat">Moves: ${g.moves} · ${g.done.size}/${g.pairs}</span></div>
-    ${finished ? finishCard("All matched!", `${g.moves} moves in ${Math.round((Date.now()-g.t0)/1000)}s.`, g.moves<=g.pairs+2?3:g.moves<=g.pairs*2?2:1, "gMatch()")
-      : `<p class="hint">Flip two cards. Match each verse with where it's found.</p>
-         <div class="mgrid">${g.cards.map((c,i)=>`<button class="mcard ${c.ref?"ref":""} ${g.done.has(c.k)?"done":g.up.includes(i)?"up":""}" onclick="flipCard(${i})">${esc(c.txt)}</button>`).join("")}</div>`}`;
+  const g=G, finished=g.done.size===g.left.length;
+  gArea().innerHTML = `<div class="ghead"><h2 class="label" style="flex:1;margin:0">🃏 Match-Up</h2><span class="stat">${g.done.size}/${g.left.length} · Mistakes: ${g.mistakes}</span></div>
+    ${finished ? finishCard("All matched!", `${g.mistakes===0?"No mistakes!":g.mistakes+" mistake"+(g.mistakes>1?"s":"")+"."} Time: ${Math.round((Date.now()-g.t0)/1000)}s`, g.mistakes===0?3:g.mistakes<=2?2:1, "gMatch()")
+      : `<p class="hint">Drag each reference onto its verse, or tap a reference and then tap the verse.</p>
+         <div class="mcols">
+           <div>${g.left.map(v=>`<div class="mverse ${g.done.has(v.id)?"ok":""}" data-id="${v.id}" onclick="dropOn(${v.id})">${esc(snippet(v))}${g.done.has(v.id)?`<span class="tag">✓ ${esc(refShort(v))}</span>`:""}</div>`).join("")}</div>
+           <div>${g.right.map(v=>`<button class="mchip ${g.done.has(v.id)?"gone":""} ${g.sel===v.id?"sel":""}" data-id="${v.id}">${esc(refShort(v))}</button>`).join("")}</div>
+         </div>`}`;
+  if(!finished) document.querySelectorAll(".mchip:not(.gone)").forEach(attachDrag);
 }
-function flipCard(i){
-  const g=G; if(g.lock || g.up.includes(i) || g.done.has(g.cards[i].k)) return;
-  g.up.push(i); renderMatch();
-  if(g.up.length===2){ g.moves++; const [a,b]=g.up.map(x=>g.cards[x]);
-    if(a.k===b.k && a.ref!==b.ref){ g.done.add(a.k); g.up=[]; setTimeout(renderMatch,250); }
-    else { g.lock=true; setTimeout(()=>{ g.up=[]; g.lock=false; renderMatch(); },900); } }
+function attachDrag(chip){
+  const id=+chip.dataset.id; let ghost=null, sx=0, sy=0, moved=false;
+  chip.addEventListener("pointerdown", e=>{ sx=e.clientX; sy=e.clientY; moved=false; chip.setPointerCapture(e.pointerId); });
+  chip.addEventListener("pointermove", e=>{
+    if(!chip.hasPointerCapture(e.pointerId)) return;
+    if(!moved && Math.hypot(e.clientX-sx, e.clientY-sy)<8) return;
+    if(!moved){ moved=true; ghost=document.createElement("div"); ghost.className="dragghost"; ghost.textContent=chip.textContent; document.body.appendChild(ghost); chip.style.opacity=".35"; }
+    ghost.style.left=e.clientX+"px"; ghost.style.top=e.clientY+"px";
+    document.querySelectorAll(".mverse.hot").forEach(x=>x.classList.remove("hot"));
+    const t=document.elementFromPoint(e.clientX,e.clientY); const card=t&&t.closest(".mverse:not(.ok)"); if(card) card.classList.add("hot");
+  });
+  chip.addEventListener("pointerup", e=>{
+    if(moved){ if(ghost) ghost.remove(); chip.style.opacity=""; const t=document.elementFromPoint(e.clientX,e.clientY); const card=t&&t.closest(".mverse:not(.ok)");
+      document.querySelectorAll(".mverse.hot").forEach(x=>x.classList.remove("hot")); if(card){ G.sel=id; dropOn(+card.dataset.id); } }
+    else { G.sel = G.sel===id ? null : id; renderMatch(); }
+  });
+  chip.addEventListener("pointercancel", ()=>{ if(ghost) ghost.remove(); chip.style.opacity=""; });
+}
+function dropOn(verseId){
+  const g=G; if(!g || g.id!=="match" || g.sel==null || g.done.has(verseId)) return;
+  if(g.sel===verseId){ g.done.add(verseId); g.sel=null; renderMatch(); return; }
+  g.mistakes++; const card=document.querySelector(`.mverse[data-id="${verseId}"]`); g.sel=null; renderMatch();
+  const c2=document.querySelector(`.mverse[data-id="${verseId}"]`); if(c2){ c2.style.borderColor="var(--bad)"; c2.classList.add("shake"); setTimeout(()=>{ c2.style.borderColor=""; c2.classList.remove("shake"); },450); }
 }
 
 /* ---- 4. Beat the Clock ---- */
@@ -1091,7 +1257,7 @@ updateStreakLine();
 /* ---------- backup & restore ---------- */
 function backupData(){
   let days=[]; try{ days=JSON.parse(localStorage.getItem(STREAK_KEY)||"[]"); }catch(e){}
-  return {app:"memorize-open-heavens", version:1, saved:new Date().toISOString(), verses, days};
+  return {app:"memorize-open-heavens", version:1, saved:new Date().toISOString(), verses, days, name:getName(), weekly:weeklyHistory()};
 }
 async function makeBackup(){
   const msg=document.getElementById("backupMsg");
@@ -1125,6 +1291,8 @@ function restoreBackup(input){
     // remove untouched starter verses only if the backup brought real ones
     persist();
     try{ const d=new Set([...practiceDays(), ...(data.days||[])]); localStorage.setItem(STREAK_KEY, JSON.stringify([...d].sort().slice(-400))); }catch(e){}
+    try{ if(data.name && !getName()) localStorage.setItem(NAME_KEY, data.name); }catch(e){}
+    try{ if(Array.isArray(data.weekly)){ const h=weeklyHistory(); for(const w of data.weekly){ if(w && w.week && !h.find(x=>x.week===w.week)) h.push(w); } saveWeekly(h); } }catch(e){}
     updateStreakLine(); renderList();
     msg.innerHTML=`Restored ✓ ${added} verse${added===1?"":"s"} added${updated?`, ${updated} merged`:""}. Your notes, scores and streak are back.`;
   };

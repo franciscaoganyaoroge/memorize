@@ -80,6 +80,11 @@
   #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
   .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
   .hidden{display:none}
+  .rtime{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid rgba(216,196,156,.6)}
+  .rtime:first-child{border-top:none}
+  .rtime input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--night)}
+  .rtime label{flex:1;margin:0;font-family:'Cormorant Garamond',serif;font-size:1.1rem;letter-spacing:0;text-transform:none;color:var(--ink)}
+  .rtime input[type=time]{width:130px;min-height:40px;padding:6px 8px}
   .greet{margin-top:14px;font-family:'Cormorant Garamond',serif;font-size:1.2rem;color:var(--night);font-weight:600}
   .greet .fl{font-family:Jost,sans-serif;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--gold);font-weight:500;margin-left:6px}
   .greet .edit{background:none;border:none;color:var(--muted);font-size:.66rem;padding:0 4px;min-height:0;letter-spacing:.1em}
@@ -209,6 +214,14 @@
     <div class="card today" id="todayCard"></div>
 
     <div class="card" id="weeklyCard"></div>
+
+    <div class="card" id="remindCard">
+      <h2 class="label">Daily reminders</h2>
+      <div class="daytag">Get a nudge on your phone to practice, with a link straight back here. Pick your times, then tap the button once.</div>
+      <div id="remindTimes" style="margin-top:10px"></div>
+      <button class="primary" style="margin-top:12px" onclick="addReminders()">Add reminders to my phone</button>
+      <p class="hint" id="remindMsg" style="margin-top:10px"></p>
+    </div>
 
     <div class="card" id="gamesCard">
       <div class="row" style="justify-content:space-between;flex-wrap:nowrap;gap:14px">
@@ -502,6 +515,54 @@ function saveName(){
 }
 document.addEventListener("keydown", e=>{ if(e.key==="Enter" && e.target && e.target.id==="nameIn"){ e.preventDefault(); saveName(); } });
 const cheer = () => { const n=getName(); return n ? `Well done, ${esc(n)}! ` : "Well done! "; };
+
+
+/* ---------- daily reminders (calendar alerts on the visitor's own phone) ---------- */
+const REMIND_KEY = KEY+"-remind";
+const REMIND_SLOTS = [["Morning: learn today's verse","08:00",true],["Midday: say it once","12:30",true],["Afternoon: quick test","16:30",false],["Before bed: one last time","21:30",true]];
+function remindPrefs(){ try{ const p=JSON.parse(localStorage.getItem(REMIND_KEY)||"null"); if(Array.isArray(p)&&p.length===REMIND_SLOTS.length) return p; }catch(e){} return REMIND_SLOTS.map(x=>({on:x[2], t:x[1]})); }
+function renderRemind(){
+  const box=document.getElementById("remindTimes"); if(!box) return; const p=remindPrefs();
+  box.innerHTML = REMIND_SLOTS.map((x,i)=>`<div class="rtime"><input type="checkbox" id="rOn${i}" ${p[i].on?"checked":""}><label for="rOn${i}">${esc(x[0])}</label><input type="time" id="rT${i}" value="${p[i].t}"></div>`).join("");
+}
+function icsDate(d){ return d.getFullYear()+String(d.getMonth()+1).padStart(2,"0")+String(d.getDate()).padStart(2,"0"); }
+function icsEscape(t){ return t.replace(/\\/g,"\\\\").replace(/;/g,"\;").replace(/,/g,"\\,").replace(/\n/g,"\\n"); }
+function buildICS(slots){
+  const url = shareBase() || location.href.split("#")[0];
+  const day=new Date(); const ds=icsDate(day);
+  const stamp=new Date().toISOString().replace(/[-:]/g,"").replace(/\.\d+Z$/,"Z");
+  const ev = slots.map((sl,i)=>{
+    const [h,m]=sl.t.split(":").map(Number); const end=new Date(day.getFullYear(),day.getMonth(),day.getDate(),h,m+10);
+    const pad=n=>String(n).padStart(2,"0");
+    return ["BEGIN:VEVENT",
+      `UID:memorize-${ds}-${i}-${Math.random().toString(36).slice(2)}@memorize`,
+      `DTSTAMP:${stamp}`,
+      `DTSTART:${ds}T${pad(h)}${pad(m)}00`,
+      `DTEND:${icsDate(end)}T${pad(end.getHours())}${pad(end.getMinutes())}00`,
+      "RRULE:FREQ=DAILY",
+      `SUMMARY:${icsEscape("📖 Memory verse: "+sl.label)}`,
+      `DESCRIPTION:${icsEscape("Open today's verse and practice: "+url)}`,
+      `URL:${url}`,
+      "BEGIN:VALARM","ACTION:DISPLAY",`DESCRIPTION:${icsEscape("Time to practice your memory verse")}`,"TRIGGER:PT0M","END:VALARM",
+      "END:VEVENT"].join("\r\n");
+  });
+  return ["BEGIN:VCALENDAR","VERSION:2.0","PRODID:-//Memorize Open Heavens//EN","CALSCALE:GREGORIAN","METHOD:PUBLISH",...ev,"END:VCALENDAR"].join("\r\n")+"\r\n";
+}
+function addReminders(){
+  const msg=document.getElementById("remindMsg");
+  const prefs=REMIND_SLOTS.map((x,i)=>({on:document.getElementById("rOn"+i).checked, t:document.getElementById("rT"+i).value||x[1]}));
+  try{ localStorage.setItem(REMIND_KEY, JSON.stringify(prefs)); }catch(e){}
+  const slots=prefs.map((p,i)=>({...p,label:REMIND_SLOTS[i][0].split(":")[0]})).filter(p=>p.on);
+  if(!slots.length){ msg.textContent="Tick at least one time first."; return; }
+  if(ON_CLAUDE){ msg.innerHTML="Open the website on your phone to add reminders: <b>"+esc(SITE_URL)+"</b>"; return; }
+  const ics=buildICS(slots);
+  const blob=new Blob([ics],{type:"text/calendar;charset=utf-8"}), u=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=u; a.download="memory-verse-reminders.ics"; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(u),60000);
+  msg.innerHTML = /iPhone|iPad|iPod/.test(navigator.userAgent)
+    ? "When your iPhone asks, tap <b>Add All</b> to put the reminders in your Calendar. If nothing happens, open this page in <b>Safari</b> (not inside WhatsApp) and tap the button again."
+    : "Open the downloaded file and choose <b>Add</b> / <b>Import</b> to put the reminders in your calendar. Your phone will alert you at those times every day.";
+}
 
 /* ---------- share a verse with friends ---------- */
 const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
@@ -1453,6 +1514,7 @@ pTo.addEventListener("change", fillVerse);
 document.getElementById("notesIn").addEventListener("input", e=>{ if(cur){ cur.notes=e.target.value; persist(); } });
 document.querySelectorAll(".verse-item .preview").forEach(()=>{});
 importFromHash();
+renderRemind();
 renderList();
 renderOwner();
 loadFeed();

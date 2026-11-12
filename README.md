@@ -2,7 +2,7 @@
 
 A simple, free way to hide God's word in your heart.
 
-**Open it here:** https://franciscaoganyaoroge.github.io/memorize/
+**Open it here:** https://memorize-open-heavens.pages.dev/
 
 No login, no app. It works in the browser on any phone or computer.
 

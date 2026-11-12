@@ -364,9 +364,9 @@ const STARTERS = [
   {ref:"Psalm 119:11 (KJV)", text:"Thy word have I hid in mine heart, that I might not sin against thee."}
 ];
 const KEY = "scripture-memory-v1";
-const SITE_URL = "https://franciscaoganyaoroge.github.io/memorize/";   // public website address, filled in when the site is published
+const SITE_URL = "https://memorize-open-heavens.pages.dev/";   // public website address, filled in when the site is published
 const ON_CLAUDE = /claude(usercontent)?\.(ai|com)$/.test(location.hostname) || location.hostname.endsWith("claudeusercontent.com");
-const shareBase = () => SITE_URL || (ON_CLAUDE ? "" : location.origin + location.pathname);
+const shareBase = () => ON_CLAUDE ? SITE_URL : (location.origin + location.pathname);
 let verses = load();
 let cur = null, mode = "read", fadeStage = 0, fadeOrder = [], peeked = new Set();
 let test = null;
@@ -386,7 +386,12 @@ const GH_OWNER="franciscaoganyaoroge", GH_REPO="memorize", FEED="verses.json", T
 const getToken = () => { try{ return localStorage.getItem(TOKEN_KEY)||""; }catch(e){ return ""; } };
 async function loadFeed(){
   if(ON_CLAUDE) return;
-  let feed; try{ const r=await fetch(FEED+"?t="+Date.now(),{cache:"no-store"}); if(!r.ok) return; feed=await r.json(); }catch(e){ return; }
+  // The daily verse lives in the GitHub repo, so it updates the moment Francisca publishes, wherever the site is hosted.
+  let feed=null;
+  for(const u of [`https://raw.githubusercontent.com/${GH_OWNER}/${GH_REPO}/main/${FEED}?t=${Date.now()}`, `${FEED}?t=${Date.now()}`]){
+    try{ const r=await fetch(u,{cache:"no-store"}); if(r.ok){ feed=await r.json(); break; } }catch(e){}
+  }
+  if(!feed) return;
   if(!Array.isArray(feed)) return;
   let added=null, changed=false;
   for(const f of feed.slice().reverse()){
@@ -426,7 +431,7 @@ async function publishVerse(id, btn){
     if(p.status===409||p.status===422) throw new Error("retry");
     if(!p.ok) throw new Error("http "+p.status);
     v.pub=true; v.day=d; persist();
-    msgEl.textContent="Published! Everyone visiting the website will see it within a couple of minutes.";
+    msgEl.textContent="Published! Everyone visiting the website will see it within about 5 minutes.";
     btn.textContent="Published ✓";
   }catch(e){
     btn.disabled=false;

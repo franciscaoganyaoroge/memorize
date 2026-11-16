@@ -17,6 +17,9 @@ SOURCES = [
     ("flatimes.com", "https://flatimes.com/category/open-heavens/feed/"),
     ("flatimes.com", "https://flatimes.com/feed/"),
     ("openheavens.com.ng", "https://www.openheavens.com.ng/feeds/posts/default?alt=rss&max-results=25"),
+    ("openheavensdaily.com", "https://www.openheavensdaily.com/feeds/posts/default?alt=rss&max-results=25"),
+    ("openheavensdaily.com", "https://www.openheavensdaily.com/feed/"),
+    ("rccgonline.org", "https://rccgonline.org/feed/"),
 ]
 
 BOOK_RE = "|".join(sorted({re.escape(b) for b in BOOKS} | {"Psalms", "Song of Songs", "Revelations"}, key=len, reverse=True))

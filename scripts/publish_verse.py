@@ -45,8 +45,7 @@ def book_index(prefix, name):
 
 def find_reference(text):
     """Return (book_index, chapter, verse, verse_end) from the MEMORISE line, or None."""
-    t = html.unescape(re.sub(r"<[^>]+>", " ", text))
-    t = re.sub(r"\s+", " ", t)
+    t = plain(text)
     m = re.search(r"MEMORI[SZ]E\s*[:\-–]?(.{0,400})", t, re.I)
     if not m:
         return None
@@ -59,7 +58,10 @@ def find_reference(text):
 
 
 def plain(text):
-    t = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    # feeds often carry the post HTML escaped (&lt;p&gt;), so unescape, strip tags, and repeat
+    t = text
+    for _ in range(2):
+        t = re.sub(r"<[^>]+>", " ", html.unescape(t))
     return re.sub(r"\s+", " ", t)
 
 

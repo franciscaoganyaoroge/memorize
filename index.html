@@ -305,27 +305,7 @@
 
   </div>
 
-  <!-- POSTER VIEW -->
-  <div id="posterView" class="hidden">
-    <button class="ghost back" onclick="closePoster()" style="padding-left:0">← All verses</button>
-    <div class="card">
-      <h2 class="label">Devotional picture</h2>
-      <div class="daytag">The verse, reading and topic fill in by themselves. Paste today's message and prayer point from your own Open Heavens app or book, then tap <b>Make picture</b>.</div>
-      <label for="pTopic">Topic</label><input id="pTopic" maxlength="80">
-      <div class="pick" style="margin-top:0">
-        <div><label for="pRead">Bible reading</label><input id="pRead" placeholder="e.g. Exodus 2:11-23"></div>
-        <div><label for="pYear">Bible in one year</label><input id="pYear" placeholder="e.g. Acts 4-5"></div>
-      </div>
-      <label for="pMsg">Today's message (paste)</label><textarea id="pMsg" style="min-height:180px;font-size:1rem" placeholder="Paste the devotional message here…"></textarea>
-      <label for="pPray">Prayer point (paste)</label><textarea id="pPray" style="min-height:70px;font-size:1rem" placeholder="Paste the prayer point here…"></textarea>
-      <p class="hint" style="margin-top:8px">What you paste stays on this phone only. It isn't published or shared with anyone.</p>
-      <button class="primary" onclick="makePoster()">Make picture</button>
-      <p class="hint" id="posterMsg" style="margin-top:10px"></p>
-      <div id="posterOut" style="margin-top:12px"></div>
-    </div>
-  </div>
 
-  <!-- GAMES VIEW -->
   <div id="gamesView" class="hidden">
     <button class="ghost back" id="gamesBack" onclick="gamesBack()" style="padding-left:0">← All verses</button>
     <div class="card" id="gamesCardInner"><div id="gameArea"></div></div>
@@ -664,7 +644,6 @@ function renderToday(){
       <span class="row">${v.best!=null?`<span class="badge">${v.best===100?"✓ ":""}${v.best}%</span>`:""}
       <button class="primary" onclick="openVerse(${v.id})">Practice</button></span></div>
       ${v.pub && !getToken() ? `<span class="fromtag">From Francisca</span>` : ""}
-      <div class="row tshare"><button onclick="openPoster(${v.id})">📰 Devotional picture</button></div>
       ${getToken() && !ON_CLAUDE ? `<div class="row tshare"><button class="primary" onclick="publishVerse(${v.id}, this)">${v.pub?"Publish again":"Publish to everyone"}</button></div>` : ""}
       ${waHref(v)?`<div class="row tshare">${shareBtns(v)}</div>`:""}`).join('<div style="height:12px"></div>');
   } else {
@@ -1153,170 +1132,6 @@ function weeklyDone(){
     <div class="row" style="margin-top:12px"><button class="primary" onclick="gamesBack()">Done</button></div>`;
 }
 
-
-/* =================== DEVOTIONAL PICTURE =================== */
-let posterVerse=null, posterBg=null, posterBlob=null;
-const POSTER_KEY = d => KEY+"-poster-"+d;
-function openPoster(id){
-  posterVerse = verses.find(v=>v.id===id); if(!posterVerse) return;
-  const d = posterVerse.day || dayKey(0);
-  let saved={}; try{ saved=JSON.parse(localStorage.getItem(POSTER_KEY(d))||"{}"); }catch(e){}
-  document.getElementById("pTopic").value = saved.topic ?? posterVerse.topic ?? "";
-  document.getElementById("pRead").value = saved.read ?? posterVerse.read ?? "";
-  document.getElementById("pYear").value = saved.byear ?? posterVerse.byear ?? "";
-  document.getElementById("pMsg").value = saved.msg || "";
-  document.getElementById("pPray").value = saved.pray || "";
-  document.getElementById("posterOut").innerHTML=""; document.getElementById("posterMsg").textContent="";
-  listView.classList.add("hidden"); posterView.classList.remove("hidden"); window.scrollTo(0,0);
-}
-function closePoster(){ posterView.classList.add("hidden"); listView.classList.remove("hidden"); renderList(); }
-function savePosterFields(){
-  const d=(posterVerse&&posterVerse.day)||dayKey(0);
-  const o={topic:pTopic.value.trim(), read:pRead.value.trim(), byear:pYear.value.trim(), msg:pMsg.value, pray:pPray.value};
-  try{ localStorage.setItem(POSTER_KEY(d), JSON.stringify(o)); }catch(e){}
-  return o;
-}
-["pTopic","pRead","pYear","pMsg","pPray"].forEach(id=>document.getElementById(id).addEventListener("input", ()=>{ if(posterVerse) savePosterFields(); }));
-
-function parseRange(str){
-  const m=(str||"").replace(/\s*\(.*?\)/g,"").trim().match(/^(.+?)\s+(\d+)\s*:\s*(\d+)(?:\s*[-–]\s*(?:(\d+)\s*:\s*)?(\d+))?$/);
-  if(!m) return null;
-  const nb=normBook(m[1]); const bi=BOOKS.findIndex(b=>normBook(b)===nb); if(bi<0) return null;
-  const ch=+m[2], v1=+m[3]; let v2=m[5]?+m[5]:v1; if(m[4] && +m[4]!==ch) v2=null; // cross-chapter: rest of chapter
-  return {book:bi+1, ch, v1, v2};
-}
-async function kjvPassage(r){
-  const G=[5,17,22,39,43,44,58,66], gi=G.findIndex(x=>r.book<=x), key="KJV-"+gi;
-  if(!cache[key]){ const res=await fetch(`b/${key}.json`); if(!res.ok) throw 0; cache[key]=await res.json(); }
-  const vs=cache[key][r.book][r.ch-1]; if(!vs) return [];
-  const end = r.v2==null ? vs.length : Math.min(r.v2, vs.length);
-  const out=[]; for(let v=r.v1; v<=end; v++){ let t=vs[v-1]; if(!t) continue;
-    if(r.book===19 && v===1) t=t.replace(/^(?:(?:To the chief Musician|A Psalm|A Song|Maschil|Michtam|Shiggaion|A Prayer|Of David|A Praise)[^.]*\.\s*)+/,"");
-    out.push([v,t]); }
-  return out;
-}
-function loadPosterBg(){ return posterBg ? Promise.resolve(posterBg) : new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>{posterBg=i;res(i)}; i.onerror=rej; i.src="poster-bg.jpg"; }); }
-
-/* text layout helpers */
-function wrapP(ctx, text, maxW){ const out=[]; for(const para of text.split(/\n/)){ if(!para.trim()){ out.push(""); continue; } out.push(...wrapLines(ctx, para.trim(), maxW)); } return out; }
-function rr(ctx,x,y,w,h,r,fill,stroke){ ctx.beginPath(); ctx.moveTo(x+r,y); ctx.arcTo(x+w,y,x+w,y+h,r); ctx.arcTo(x+w,y+h,x,y+h,r); ctx.arcTo(x,y+h,x,y,r); ctx.arcTo(x,y,x+w,y,r); ctx.closePath(); if(fill){ctx.fillStyle=fill;ctx.fill();} if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=1.5;ctx.stroke();} }
-function badge(ctx,x,y,sym,bg){ rr(ctx,x,y,46,46,9,bg); ctx.fillStyle="#fff"; ctx.font='600 26px Jost, sans-serif'; ctx.textAlign="center"; ctx.textBaseline="middle"; ctx.fillText(sym,x+23,y+25); ctx.textAlign="left"; ctx.textBaseline="alphabetic"; }
-// largest font size (serif) at which the paragraphs fit the box
-function fitParas(ctx, paras, maxW, maxH, big, small, lh=1.38, gap=0.6, style=""){
-  for(let size=big; size>=small; size-=1){
-    ctx.font=`${style} ${size}px "Cormorant Garamond", Georgia, serif`;
-    let h=0; const blocks=paras.map(p=>{ const ls=wrapLines(ctx,p,maxW); h+=ls.length*size*lh + size*gap; return ls; });
-    if(h-size*gap<=maxH) return {size, blocks};
-  }
-  ctx.font=`${style} ${small}px "Cormorant Garamond", Georgia, serif`;
-  return {size:small, blocks:paras.map(p=>wrapLines(ctx,p,maxW)), overflow:true};
-}
-
-async function makePoster(){
-  const o=savePosterFields(), v=posterVerse, msgEl=document.getElementById("posterMsg");
-  msgEl.textContent="Making your picture…";
-  try{ await Promise.all([loadPosterBg(), fontsReady()]); }catch(e){ msgEl.textContent="Couldn't load the background. Check your connection and try again."; return; }
-  let reading=[]; const rng=parseRange(o.read);
-  if(o.read && !rng){ msgEl.textContent="I couldn't read the Bible reading. Write it like “Exodus 2:11-23”."; return; }
-  try{ if(rng) reading=await kjvPassage(rng); }catch(e){ msgEl.textContent="Couldn't load the Bible reading. Check your connection and try again."; return; }
-
-  const W=1080,H=1920, c=document.createElement("canvas"); c.width=W; c.height=H; const ctx=c.getContext("2d");
-  const navy="#1d2f6b", ink="#23222a", gold="#b97a22", blue="#2f6fc0";
-  ctx.drawImage(posterBg,0,0,W,H);
-  ctx.fillStyle="rgba(253,250,240,.55)"; ctx.fillRect(0,300,W,1290);
-
-  // header (over the sky)
-  ctx.textAlign="center"; ctx.shadowColor="rgba(255,250,235,.95)"; ctx.shadowBlur=18;
-  ctx.fillStyle=navy; ctx.font='600 74px "Cormorant Garamond", Georgia, serif'; ctx.fillText("Today's Open Heavens",W/2,112);
-  ctx.fillStyle="#c0392b"; ctx.font='64px "Pinyon Script", cursive'; ctx.fillText("with Francisca",W/2,182);
-  ctx.fillStyle=navy; ctx.font='500 22px Jost, sans-serif'; spacedC(ctx,"FROM OPEN HEAVENS DAILY DEVOTIONAL · PASTOR E. A. ADEBOYE",W/2,226,2);
-  ctx.shadowBlur=0;
-
-  // date + topic
-  const [yy,mm,dd]=(v.day||dayKey(0)).split("-").map(Number);
-  const dateStr=new Date(yy,mm-1,dd).toLocaleDateString("en-US",{weekday:"long",month:"long",day:"numeric",year:"numeric"}).toUpperCase();
-  ctx.fillStyle=ink; ctx.font='500 26px "Cormorant Garamond", Georgia, serif'; ctx.fillText(dateStr,W/2,330);
-  ctx.strokeStyle=gold; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(90,321); ctx.lineTo(W/2-ctx.measureText(dateStr).width/2-24,321); ctx.moveTo(W/2+ctx.measureText(dateStr).width/2+24,321); ctx.lineTo(W-90,321); ctx.stroke();
-  const topic=(o.topic||"").toUpperCase(); let ts=62; ctx.fillStyle=navy;
-  do{ ctx.font=`700 ${ts}px "Cormorant Garamond", Georgia, serif`; ts-=2; } while(ctx.measureText(topic).width>W-120 && ts>30);
-  if(topic){ ctx.fillText(topic,W/2,402); const tw=ctx.measureText(topic).width; ctx.strokeStyle=gold; ctx.beginPath(); ctx.moveTo(W/2-tw/2-10,420); ctx.lineTo(W/2+tw/2+10,420); ctx.stroke(); }
-  ctx.textAlign="left";
-
-  // columns
-  const top=450, bottom=1590, Lx=34, Lw=486, Rx=560, Rw=486;
-  ctx.strokeStyle="rgba(185,122,34,.55)"; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(540,top+6); ctx.lineTo(540,bottom); ctx.stroke();
-
-  // memorise box
-  ctx.font='500 30px "Cormorant Garamond", Georgia, serif';
-  const memFit=fitParas(ctx,[v.text],Lw-48,190,34,22);
-  const memH = 86 + memFit.blocks[0].length*memFit.size*1.38 + 18;
-  rr(ctx,Lx,top,Lw,memH,18,"rgba(214,231,248,.92)");
-  badge(ctx,Lx+18,top+18,"✦",navy);
-  ctx.fillStyle=navy; ctx.font='600 24px Jost, sans-serif'; ctx.fillText("MEMORISE",Lx+78,top+50);
-  ctx.fillStyle=blue; ctx.font='600 26px "Cormorant Garamond", Georgia, serif'; ctx.fillText("│ "+refShort(v),Lx+218,top+50);
-  ctx.fillStyle=ink; ctx.font=`500 ${memFit.size}px "Cormorant Garamond", Georgia, serif`;
-  memFit.blocks[0].forEach((l,i)=>ctx.fillText(l,Lx+24,top+100+i*memFit.size*1.38));
-
-  // read box
-  const rTop=top+memH+18, rH=bottom-rTop;
-  rr(ctx,Lx,rTop,Lw,rH,18,"rgba(250,238,215,.92)");
-  badge(ctx,Lx+18,rTop+18,"▤","#8a5a2b");
-  ctx.fillStyle=navy; ctx.font='600 24px Jost, sans-serif'; ctx.fillText("READ",Lx+78,rTop+50);
-  if(o.read){ ctx.fillStyle=blue; ctx.font='600 26px "Cormorant Garamond", Georgia, serif'; ctx.fillText("│ "+o.read,Lx+160,rTop+50); }
-  if(reading.length){
-    const numW=40, innerW=Lw-40-numW, availH=rH-96;
-    let size=27, layout;
-    for(; size>=15; size--){ ctx.font=`500 ${size}px "Cormorant Garamond", Georgia, serif`; let h=0; layout=reading.map(([n,t])=>{ const ls=wrapLines(ctx,t,innerW); h+=ls.length*size*1.25+size*0.35; return [n,ls]; }); if(h<=availH) break; }
-    let y=rTop+92;
-    for(const [n,ls] of layout){ ctx.fillStyle=blue; ctx.font=`700 ${size*0.85}px Jost, sans-serif`; ctx.fillText(String(n),Lx+20,y);
-      ctx.fillStyle=ink; ctx.font=`500 ${size}px "Cormorant Garamond", Georgia, serif`; ls.forEach((l,i)=>ctx.fillText(l,Lx+20+numW,y+i*size*1.25)); y+=ls.length*size*1.25+size*0.35; if(y>bottom-10) break; }
-  }
-
-  // message column
-  rr(ctx,Rx,top,Rw,bottom-top,18,"rgba(253,250,242,.85)");
-  badge(ctx,Rx+18,top+18,"≡",navy);
-  ctx.fillStyle=navy; ctx.font='600 24px Jost, sans-serif'; ctx.fillText("TODAY'S DEVOTIONAL",Rx+78,top+50);
-  ctx.strokeStyle=gold; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(Rx+78,top+64); ctx.lineTo(Rx+Rw-20,top+64); ctx.stroke();
-  const paras=(o.msg||"").split(/\n\s*\n|\r\n\s*\r\n/).map(p=>p.replace(/\s*\n\s*/g," ").trim()).filter(Boolean);
-  if(paras.length){
-    const fit=fitParas(ctx,paras,Rw-44,bottom-top-110,30,15,1.36,0.7);
-    ctx.fillStyle=ink; ctx.font=`500 ${fit.size}px "Cormorant Garamond", Georgia, serif`;
-    let y=top+104; for(const ls of fit.blocks){ for(const l of ls){ ctx.fillText(l,Rx+22,y); y+=fit.size*1.36; } y+=fit.size*0.7; }
-    if(fit.overflow) msgEl.textContent="The message is very long, so some of it may be cut off at the bottom. You can shorten it and tap Make picture again.";
-  } else {
-    ctx.fillStyle="#6d6555"; ctx.font='italic 500 28px "Cormorant Garamond", Georgia, serif';
-    wrapLines(ctx,"Read today's full message in your Open Heavens devotional or the free Open Heavens app.",Rw-44).forEach((l,i)=>ctx.fillText(l,Rx+22,top+110+i*38));
-  }
-
-  // bottom row
-  const by=1612, bh=196, bw=(W-34*2-24*2)/3;
-  const boxes=[["PRAYER POINT","✝",navy,"rgba(214,231,248,.92)"],["BIBLE IN ONE YEAR","▤","#8a5a2b","rgba(250,238,215,.92)"],["FULL DEVOTIONAL","☼",navy,"rgba(214,231,248,.92)"]];
-  boxes.forEach(([label,sym,col,bg],i)=>{
-    const x=34+i*(bw+24); rr(ctx,x,by,bw,bh,16,bg); badge(ctx,x+14,by+14,sym,col);
-    ctx.fillStyle=navy; ctx.font='600 19px Jost, sans-serif'; ctx.fillText(label,x+70,by+44);
-    if(i===0){ const t=(o.pray||"").replace(/\s+/g," ").trim()||"Lord, help me to live by Your Word today, in Jesus' name.";
-      const f=fitParas(ctx,[t],bw-36,bh-76,24,14,1.25,0); ctx.fillStyle=ink; ctx.font=`500 ${f.size}px "Cormorant Garamond", Georgia, serif`; f.blocks[0].forEach((l,k)=>ctx.fillText(l,x+18,by+86+k*f.size*1.25)); }
-    if(i===1){ ctx.fillStyle=blue; ctx.textAlign="center"; let s=34; do{ ctx.font=`600 ${s}px "Cormorant Garamond", Georgia, serif`; s-=2; }while(ctx.measureText(o.byear||"").width>bw-30 && s>18);
-      ctx.fillText(o.byear||"–",x+bw/2,by+128); ctx.textAlign="left"; }
-    if(i===2){ ctx.fillStyle=ink; ctx.font='500 22px "Cormorant Garamond", Georgia, serif'; wrapLines(ctx,"Get the full daily devotional in the free Open Heavens app.",bw-36).forEach((l,k)=>ctx.fillText(l,x+18,by+88+k*28)); }
-  });
-  ctx.textAlign="center"; ctx.shadowColor="rgba(255,250,235,1)"; ctx.shadowBlur=14; ctx.fillStyle=ink; ctx.font='600 24px "Cormorant Garamond", Georgia, serif'; ctx.fillText("Share today's devotional with others.",W/2,1848); ctx.fillText("Share today's devotional with others.",W/2,1848); ctx.shadowBlur=0; ctx.textAlign="left";
-
-  // show + save
-  const url=c.toDataURL("image/jpeg",.92); posterBlob=await new Promise(r=>c.toBlob(r,"image/jpeg",.92));
-  document.getElementById("posterOut").innerHTML=`<img src="${url}" alt="Devotional picture" style="width:100%;border:1px solid var(--rule)" onclick="showFull(this.src)">
-    <div class="row" style="margin-top:10px">${(DL||canShareFiles)?`<button class="primary" onclick="savePoster()">Save picture</button>`:""}</div>
-    <p class="hint" style="margin-top:6px">${(DL||canShareFiles)?"Tap Save picture, then choose <b>Save Image</b>.":"Press and hold the picture and choose <b>Save to Photos</b>."} Then post it to your status.</p>`;
-  if(!msgEl.textContent.startsWith("The message is very long")) msgEl.textContent="";
-}
-function spacedC(ctx,text,x,y,sp){ const a=ctx.textAlign; ctx.textAlign="left"; const ch=[...text]; const w=ch.reduce((s,c)=>s+ctx.measureText(c).width,0)+sp*(ch.length-1); let cx=x-w/2; for(const c of ch){ ctx.fillText(c,cx,y); cx+=ctx.measureText(c).width+sp; } ctx.textAlign=a; }
-async function savePoster(){
-  if(!posterBlob) return; const d=(posterVerse&&posterVerse.day)||dayKey(0), name=`open-heavens-${d}.jpg`, msg=document.getElementById("posterMsg");
-  try{
-    if(DL){ await DL.save({filename:name, data:posterBlob}); msg.textContent="Saved ✓"; return; }
-    if(canShareFiles){ await navigator.share({files:[new File([posterBlob],name,{type:"image/jpeg"})]}); msg.textContent="Done ✓"; return; }
-  }catch(e){ if(e && (e.name==="AbortError"||e.code==="declined")) return; msg.textContent="Saving didn't work. Press and hold the picture instead."; }
-}
 
 /* =================== GAMES =================== */
 const shuffle = a => { a=a.slice(); for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]]; } return a; };

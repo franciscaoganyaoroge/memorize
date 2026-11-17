@@ -58,6 +58,33 @@ def find_reference(text):
     return None
 
 
+def plain(text):
+    t = html.unescape(re.sub(r"<[^>]+>", " ", text))
+    return re.sub(r"\s+", " ", t)
+
+
+def find_after(label_re, text, maxlen=200):
+    m = re.search(label_re + r"\s*[:\-–]?\s*(.{0," + str(maxlen) + r"})", text, re.I)
+    return m.group(1) if m else ""
+
+
+def details(body):
+    """Topic-independent extras: the Bible reading reference and the Bible in One Year reading (references only)."""
+    t = plain(body)
+    read = None
+    seg = find_after(r"\bREAD\b", t, 120)
+    r = REF_RE.search(seg)
+    if r:
+        bi = book_index(r.group(1), r.group(2))
+        if bi is not None:
+            v1 = int(r.group(4)); v2 = int(r.group(5)) if r.group(5) else None
+            read = [bi, int(r.group(3)), v1, v2 if v2 and v2 > v1 else v1]
+    byear = find_after(r"BIBLE\s+IN\s+ONE\s+YEAR", t, 60)
+    byear = re.split(r"\s{2,}|\b(?:MESSAGE|HYMN|PRAYER|ACTION|KEY|Open Heaven)\b", byear)[0].strip(" .:-–") if byear else ""
+    if not re.search(r"\d", byear or ""): byear = ""
+    return read, byear[:60]
+
+
 def items(feed_xml):
     for it in re.findall(r"<item\b.*?</item>", feed_xml, re.S | re.I):
         title = html.unescape(re.sub(r"<!\[CDATA\[|\]\]>", "", (re.search(r"<title>(.*?)</title>", it, re.S) or [None, ""])[1]))
@@ -74,7 +101,8 @@ def reference_from(feed_url, day):
             ref = find_reference(body)
             if ref:
                 topic = title.split("–")[-1].split(" - ")[-1].strip()
-                return ref, topic, title
+                read, byear = details(body)
+                return ref, topic, title, read, byear
     return None
 
 
@@ -99,8 +127,9 @@ def main():
         day = datetime.date.fromisoformat(os.environ["FOR_DATE"])
     d = day.isoformat()
     feed = json.load(open("verses.json", encoding="utf-8"))
-    if any(f.get("d") == d for f in feed) and not dry:
-        print(f"{d}: already published, nothing to do.")
+    existing = next((f for f in feed if f.get("d") == d), None)
+    if existing and existing.get("topic") and not dry:
+        print(f"{d}: already published with details, nothing to do.")
         return 0
 
     found = {}
@@ -130,10 +159,23 @@ def main():
 
     text = kjv_text(*ref)
     entry = {"r": ref_str(*ref), "t": text, "d": d}
+    best = next(iter(found.values()))
+    topic, read, byear = best[1], best[3], best[4]
+    if topic and len(topic) <= 80 and not re.search(r"open heaven|\d{4}", topic, re.I): entry["topic"] = topic
+    if read:
+        b, c, v1, v2 = read
+        entry["read"] = f"{BOOKS[b]} {c}:{v1}" + (f"-{v2}" if v2 != v1 else "")
+        entry["readRef"] = [b + 1, c, v1, v2]
+    if byear: entry["byear"] = byear
     print("Entry:", json.dumps(entry, ensure_ascii=False))
     if dry:
         print("Dry run: not writing.")
         return 0
+    # if today's verse is already there (e.g. published by hand), just add the extra details to it
+
+    if existing and existing.get("r") and existing["r"] != entry["r"]:
+        # Francisca chose a different verse by hand: keep her verse, only add the day's details
+        entry = {**existing, **{k: v for k, v in entry.items() if k not in ("r", "t")}}
     feed = [f for f in feed if f.get("d") != d]
     feed.insert(0, entry)
     feed.sort(key=lambda f: f["d"], reverse=True)

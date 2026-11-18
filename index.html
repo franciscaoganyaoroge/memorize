@@ -1047,7 +1047,8 @@ function drawSlide(ctx, v, kind, dateStr){
   // masthead
   ctx.fillStyle=gold; ctx.font='500 26px Jost, sans-serif'; spaced(ctx,"✦  ✦  ✦",W/2,640,4);
   ctx.fillStyle=navy; ctx.font='600 64px "Cormorant Garamond", serif'; ctx.textAlign="center";
-  ctx.fillText("Memorize Today's",W/2,720); ctx.font='italic 500 64px "Cormorant Garamond", serif'; ctx.fillText("Open Heavens",W/2,790);
+  if(v.day){ ctx.fillText("Memorize Today's",W/2,720); ctx.font='italic 500 64px "Cormorant Garamond", serif'; ctx.fillText("Open Heavens",W/2,790); }
+  else { ctx.fillText("Let's Memorize",W/2,720); ctx.font='italic 500 64px "Cormorant Garamond", serif'; ctx.fillText("God's Word",W/2,790); }
   ctx.fillStyle=gold; ctx.font='58px "Pinyon Script", cursive'; ctx.fillText("with Francisca",W/2,860);
   ctx.textAlign="left";
   const step={full:["1 of 4","Read it out loud"],blanks:["2 of 4","Fill in the blanks"],letters:["3 of 4","First letters only"],recall:["4 of 4","Now say it from memory"]}[kind];
@@ -1077,14 +1078,16 @@ function drawSlide(ctx, v, kind, dateStr){
     ctx.fillText("Then say where it's found, twice.",W/2,1392);
     ctx.textAlign="left";
   }
-  ctx.textAlign="center"; ctx.fillStyle="rgba(35,34,42,.6)"; ctx.font='500 24px Jost, sans-serif'; ctx.textAlign="left"; spaced(ctx,dateStr.toUpperCase(),W/2,1530,4);
+  const foot = (!v.day && v.note) ? v.note : dateStr;
+  if(!v.day && v.note){ ctx.fillStyle=gold; ctx.textAlign="center"; ctx.font='italic 500 34px "Cormorant Garamond", serif'; ctx.fillText(foot,W/2,1532); ctx.textAlign="left"; }
+  else { ctx.fillStyle="rgba(35,34,42,.6)"; ctx.font='500 24px Jost, sans-serif'; ctx.textAlign="left"; spaced(ctx,dateStr.toUpperCase(),W/2,1530,4); }
 }
 async function openStatus(){
   practiceView.classList.add("hidden"); statusView.classList.remove("hidden"); window.scrollTo(0,0);
   const box=document.getElementById("statusImgs"); box.innerHTML='<p class="hint">Making your pictures…</p>';
   try{ await Promise.all([loadBg(), fontsReady()]); }catch(e){ box.innerHTML='<p class="hint">Couldn\'t load the background picture. Check your connection and try again.</p>'; return; }
   const c=document.createElement("canvas"); c.width=1080; c.height=1920; const ctx=c.getContext("2d");
-  const dateStr = cur.day ? niceDay(cur.day) : niceDay(dayKey(0));
+  const dateStr = cur.day ? niceDay(cur.day) : niceDay(cur.shareDate || dayKey(0));
   const kinds=[["full","1 · Read"],["blanks","2 · Blanks"],["letters","3 · Letters"],["recall","4 · Recall"]];
   let html=""; slideBlobs=[];
   const base = refShort(cur).replace(/[^A-Za-z0-9]+/g,"-").replace(/-+$/,"");

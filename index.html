@@ -80,6 +80,8 @@
   #typeIn{position:fixed;top:0;left:0;opacity:0;pointer-events:none;width:1px;height:1px;font-size:16px;border:0;padding:0}
   .keypad-note{font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);text-align:center;margin-top:10px}
   .hidden{display:none}
+  .wnote{font-family:'Cormorant Garamond',serif;font-style:italic;color:var(--gold);font-size:1rem;margin-top:2px}
+  .sharebox{margin-top:16px;padding-top:14px;border-top:1px solid rgba(216,196,156,.7)}
   .rtime{display:flex;align-items:center;gap:10px;padding:6px 0;border-top:1px solid rgba(216,196,156,.6)}
   .rtime:first-child{border-top:none}
   .rtime input[type=checkbox]{width:22px;height:22px;min-height:0;accent-color:var(--night)}
@@ -212,6 +214,8 @@
     </div>
 
     <div class="card today" id="todayCard"></div>
+
+    <div class="card hidden" id="withCard"></div>
 
     <div class="card" id="weeklyCard"></div>
 
@@ -355,6 +359,7 @@
       <div class="daytag">Turn this verse into 4 status pictures that teach it as people tap through.</div>
       <button class="primary" style="margin-top:12px" onclick="openStatus()">Make status pictures</button>
       <div id="practiceShare" class="row" style="margin-top:14px"></div>
+      <div id="shareBoxWrap"></div>
     </div>
     <div class="card">
       <h2 class="label">My study notes</h2>
@@ -410,8 +415,22 @@ async function loadFeed(){
   let added=null, changed=false;
   const extras = (v,f)=>{ for(const k of ["topic","read","readRef","byear"]){ if(f[k]!==undefined && JSON.stringify(v[k])!==JSON.stringify(f[k])){ v[k]=f[k]; changed=true; } } };
   feedByDay = {}; for(const f of feed){ if(f && f.d) feedByDay[f.d]=f; }
+  const liveExtras = new Set(feed.filter(f=>f && f.type==="extra").map(f=>f.id));
+  for(const v of verses){ if(v.extraId && v.fromFeed && !liveExtras.has(v.extraId) && !v.unshared){ v.unshared=true; changed=true; } }
+  let newExtra=null;
   for(const f of feed.slice().reverse()){
     if(!f || !f.r || !f.t || !/^\d{4}-\d\d-\d\d$/.test(f.d)) continue;
+    if(f.type==="extra"){
+      if(!f.id) continue;
+      const mine = verses.find(v=>v.extraId===f.id);
+      if(mine){
+        if(mine.ref!==f.r || mine.text!==f.t || (mine.note||"")!==(f.note||"") || mine.unshared){ mine.ref=f.r; mine.text=f.t; mine.note=f.note||""; mine.unshared=false; changed=true; }
+      } else {
+        const v={id:Date.now()+Math.floor(Math.random()*1000), extraId:f.id, fromFeed:true, ref:String(f.r).slice(0,120), text:String(f.t).slice(0,2000), note:String(f.note||"").slice(0,120), shareDate:f.d, added:Date.now(), best:null, tries:0};
+        verses.unshift(v); changed=true; newExtra=v;
+      }
+      continue;
+    }
     const existing = verses.find(v=>v.pub && v.day===f.d);
     if(existing){
       if(existing.ref!==f.r || existing.text!==f.t){ existing.ref=f.r; existing.text=f.t; existing.best=null; existing.refBest=null; changed=true; }
@@ -423,6 +442,7 @@ async function loadFeed(){
     verses.unshift(v); changed=true; if(f.d===dayKey(0)) added=v;
   }
   if(changed){ persist(); if(!listView.classList.contains("hidden")) renderList(); }
+  if(newExtra && !getToken() && !added){ const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 New verse to memorize with Francisca: <b>${esc(refShort(newExtra))}</b>`; document.body.appendChild(t); setTimeout(()=>t.remove(),5000); }
   if(added && !getToken()){ const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 Today's verse from Francisca: <b>${esc(refShort(added))}</b>`; document.body.appendChild(t); setTimeout(()=>t.remove(),5000); }
 }
 const ghHeaders = tok => ({"Authorization":"Bearer "+tok, "Accept":"application/vnd.github+json", "X-GitHub-Api-Version":"2022-11-28"});
@@ -437,8 +457,8 @@ async function publishVerse(id, btn){
     if(g.status===401||g.status===403) throw new Error("token");
     if(g.ok){ const j=await g.json(); sha=j.sha; try{ feed=JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))))); }catch(e){ feed=[]; } }
     const d=v.day||dayKey(0);
-    const old = feed.find(f=>f && f.d===d) || {};
-    feed = feed.filter(f=>f && f.d!==d);
+    const old = feed.find(f=>f && f.d===d && f.type!=="extra") || {};
+    feed = feed.filter(f=>f && (f.d!==d || f.type==="extra"));
     const keep = {}; for(const k of ["topic","read","readRef","byear"]){ if(old[k]!==undefined) keep[k]=old[k]; else if(v[k]!==undefined) keep[k]=v[k]; }
     feed.unshift({r:v.ref, t:v.text, d, ...keep});
     feed.sort((a,b)=>b.d.localeCompare(a.d)); feed=feed.slice(0,60);
@@ -594,11 +614,78 @@ function addReminders(){
     : "Open the downloaded file and choose <b>Add</b> / <b>Import</b> to put the reminders in your calendar. Your phone will alert you at those times every day.";
 }
 
+
+/* ---------- "Memorize with me": verses Francisca shares that aren't from Open Heavens ---------- */
+function renderWith(){
+  const el=document.getElementById("withCard"); if(!el) return;
+  const owner=!!getToken();
+  const list = verses.filter(v=>v.extraId && !v.unshared && (owner ? !v.fromFeed || true : v.fromFeed)).sort((a,b)=>(b.shareDate||"").localeCompare(a.shareDate||"")||(b.added||0)-(a.added||0)).slice(0,8);
+  if(!list.length){ el.classList.add("hidden"); return; }
+  el.classList.remove("hidden");
+  el.innerHTML = `<h2 class="label">${owner?"Shared with friends":"Memorize with Francisca"}</h2>
+    <div class="daytag">${owner?"Verses you've shared to memorize together, besides Open Heavens.":"Verses Francisca is learning too, from sermons and her own study."}</div>
+    ${list.map(v=>`<div class="verse-item"><div style="min-width:0"><div class="ref">${esc(v.ref)}</div>
+      ${v.note?`<div class="wnote">${esc(v.note)}</div>`:""}<div class="preview">${esc(v.text)}</div></div>
+      <div class="row" style="flex-wrap:nowrap">${v.best!=null?`<span class="badge">${v.best}%</span>`:""}<button onclick="openVerse(${v.id})">Practice</button></div></div>`).join("")}`;
+}
+async function ghUpdateFeed(mutate, message){
+  const tok=getToken(); if(!tok) throw new Error("token");
+  const url=`https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/${FEED}`;
+  for(let attempt=0; attempt<2; attempt++){
+    let sha=null, feed=[];
+    const g=await fetch(url+"?ref=main&t="+Date.now(),{headers:ghHeaders(tok),cache:"no-store"});
+    if(g.status===401||g.status===403) throw new Error("token");
+    if(g.ok){ const j=await g.json(); sha=j.sha; try{ feed=JSON.parse(decodeURIComponent(escape(atob(j.content.replace(/\n/g,""))))); }catch(e){ feed=[]; } }
+    feed = mutate(feed) || feed;
+    feed.sort((a,b)=>b.d.localeCompare(a.d));
+    const body={message, content:btoa(unescape(encodeURIComponent(JSON.stringify(feed,null,1)))), branch:"main"}; if(sha) body.sha=sha;
+    const p=await fetch(url,{method:"PUT",headers:{...ghHeaders(tok),"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(p.status===401||p.status===403) throw new Error("token");
+    if(p.status===409||p.status===422) continue;
+    if(!p.ok) throw new Error("http "+p.status);
+    return true;
+  }
+  throw new Error("retry");
+}
+function shareBoxHTML(v){
+  if(!getToken() || ON_CLAUDE || v.day || v.fromFeed) return "";
+  const on = v.extraId && !v.unshared;
+  return `<div class="sharebox"><h2 class="label">Memorize with me</h2>
+    <div class="daytag">${on?"Friends can see this verse in their “Memorize with Francisca” box.":"Share this verse with friends. It shows in its own box, separate from today's Open Heavens verse."}</div>
+    <label for="noteIn">Note (optional)</label><input id="noteIn" maxlength="100" placeholder="e.g. From Sunday's sermon" value="${esc(v.note||"")}">
+    <div class="row" style="margin-top:10px"><button class="primary" onclick="shareExtra(this)">${on?"Update for friends":"Share with friends"}</button>${on?`<button class="ghost" onclick="unshareExtra(this)" style="color:var(--bad)">Stop sharing</button>`:""}</div>
+    <p class="hint" id="shareMsg" style="margin-top:8px"></p></div>`;
+}
+async function shareExtra(btn){
+  const v=cur, msg=document.getElementById("shareMsg"); if(!v) return;
+  const note=(document.getElementById("noteIn").value||"").trim().slice(0,100);
+  btn.disabled=true; msg.textContent="Sharing…";
+  const id = v.extraId || ("x-"+Date.now().toString(36));
+  const d = v.shareDate || dayKey(0);
+  try{
+    await ghUpdateFeed(feed=>{ feed=feed.filter(f=>!(f.type==="extra" && f.id===id)); feed.push({r:v.ref, t:v.text, d, type:"extra", id, note}); return feed; }, `Memorize with me: ${refShort(v)}`);
+    v.extraId=id; v.shareDate=d; v.note=note; v.unshared=false; persist();
+    renderShareBox(); document.getElementById("shareMsg").textContent="Shared ✓ Friends will see it within about 5 minutes.";
+    return;
+  }catch(e){ msg.textContent = e.message==="token" ? "Your publishing key isn't working. Open the website with #owner at the end to set it again." : "Couldn't share. Check your connection and try again."; }
+  btn.disabled=false;
+}
+async function unshareExtra(btn){
+  const v=cur, msg=document.getElementById("shareMsg"); if(!v||!v.extraId) return;
+  btn.disabled=true; msg.textContent="Removing…";
+  try{ await ghUpdateFeed(feed=>feed.filter(f=>!(f.type==="extra" && f.id===v.extraId)), `Stop sharing: ${refShort(v)}`);
+    v.unshared=true; persist(); renderShareBox(); document.getElementById("shareMsg").textContent="Removed. Friends won't see it anymore (after a few minutes)."; }
+  catch(e){ msg.textContent="Couldn't remove it. Try again."; btn.disabled=false; }
+}
+function renderShareBox(){ const el=document.getElementById("shareBoxWrap"); if(el && cur) el.innerHTML=shareBoxHTML(cur); }
+
 /* ---------- share a verse with friends ---------- */
 const b64e = str => btoa(unescape(encodeURIComponent(str))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
 const b64d = str => decodeURIComponent(escape(atob(str.replace(/-/g,"+").replace(/_/g,"/"))));
-function verseLink(v){ const base=shareBase(); if(!base) return ""; return base + "#add=" + b64e(JSON.stringify({r:v.ref, t:v.text, d:v.day||dayKey(0)})); }
-function shareMsg(v){ return `📖 Today's Open Heavens memory verse: ${refShort(v)}\nPractice it here, no login needed:\n${verseLink(v)}`; }
+function verseLink(v){ const base=shareBase(); if(!base) return "";
+  const p = v.day ? {r:v.ref, t:v.text, d:v.day} : {r:v.ref, t:v.text, d:v.shareDate||dayKey(0), k:"x", n:v.note||"", i:v.extraId||""};
+  return base + "#add=" + b64e(JSON.stringify(p)); }
+function shareMsg(v){ return (v.day ? `📖 Today's Open Heavens memory verse: ${refShort(v)}` : `📖 Memorize with me: ${refShort(v)}${v.note?" ("+v.note+")":""}`) + `\nPractice it here, no login needed:\n${verseLink(v)}`; }
 function waHref(v){ return verseLink(v) ? "https://api.whatsapp.com/send?text=" + encodeURIComponent(shareMsg(v)) : ""; }
 function shareBtns(v){
   if(!verseLink(v)) return "";
@@ -624,6 +711,12 @@ function importFromHash(){
   let data=null; try{ data = JSON.parse(b64d(m[1])); }catch(e){}
   try{ history.replaceState(null,"",location.pathname+location.search); }catch(e){}
   if(!data || !data.r || !data.t) return;
+  if(data.k==="x"){
+    let v = (data.i && verses.find(x=>x.extraId===data.i)) || verses.find(x=>x.ref===data.r && !x.day);
+    if(!v){ v={id:Date.now(), extraId:data.i||("link-"+Date.now().toString(36)), fromFeed:true, ref:String(data.r).slice(0,120), text:String(data.t).slice(0,2000), note:String(data.n||"").slice(0,120), shareDate:/^\d{4}-\d\d-\d\d$/.test(data.d)?data.d:dayKey(0), added:Date.now(), best:null, tries:0}; verses.unshift(v); persist(); }
+    const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 <b>${esc(refShort(v))}</b> was added to “Memorize with Francisca”.`; document.body.appendChild(t); setTimeout(()=>t.remove(),5000);
+    return;
+  }
   let v = verses.find(x=>x.ref===data.r && x.day===data.d);
   if(!v){ v={id:Date.now(), ref:String(data.r).slice(0,120), text:String(data.t).slice(0,2000), day:/^\d{4}-\d\d-\d\d$/.test(data.d)?data.d:dayKey(0), best:null, tries:0, shared:true}; verses.unshift(v); persist(); }
   const t=document.createElement("div"); t.className="toast"; t.innerHTML=`📖 <b>${esc(refShort(v))}</b> was added to your verses.`;
@@ -660,7 +753,8 @@ function renderToday(){
 /* ---------- list ---------- */
 function renderList(){
   renderToday(); renderGreet(); if(typeof renderWeekly==='function') renderWeekly();
-  const mine = verses.filter(v=>!v.day), oh = verses.filter(v=>v.day && v.day!==dayKey(0));
+  const mine = verses.filter(v=>!v.day && !(v.fromFeed && v.extraId)), oh = verses.filter(v=>v.day && v.day!==dayKey(0));
+  renderWith();
   document.getElementById("list").innerHTML = mine.length ? itemsHTML(mine) : '<p class="hint">Nothing here yet. Tap “Add verse” to start your own study list.</p>';
   document.getElementById("ohCard").classList.toggle("hidden", !oh.length);
   document.getElementById("ohList").innerHTML = itemsHTML(oh);
@@ -669,7 +763,7 @@ function itemsHTML(arr){
   return arr.map(v=>`
     <div class="verse-item">
       <div style="min-width:0">
-        <div class="ref">${esc(v.ref)}${v.day?` <span class="daytag">· ${niceDay(v.day).replace(/^\w+, /,"")}</span>`:""}</div>
+        <div class="ref">${v.extraId && !v.fromFeed && !v.unshared ? `<span class="badge" style="margin-right:6px">Shared</span>` : ""}${esc(v.ref)}${v.day?` <span class="daytag">· ${niceDay(v.day).replace(/^\w+, /,"")}</span>`:""}</div>
         <div class="preview">${esc(v.text)}</div>
       </div>
       <div class="row" style="flex-wrap:nowrap">
@@ -698,6 +792,7 @@ function openVerse(id){
   cur = verses.find(v=>v.id===id); if(!cur) return;
   listView.classList.add("hidden"); practiceView.classList.remove("hidden");
   document.getElementById("notesIn").value = cur.notes || "";
+  renderShareBox();
   document.getElementById("practiceShare").innerHTML = verseLink(cur) ? `<div class="daytag" style="width:100%">Or send a link so friends can practice it on their own phone:</div>${shareBtns(cur)}` : "";
   setMode("read"); window.scrollTo(0,0);
 }

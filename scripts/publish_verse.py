@@ -129,7 +129,7 @@ def main():
         day = datetime.date.fromisoformat(os.environ["FOR_DATE"])
     d = day.isoformat()
     feed = json.load(open("verses.json", encoding="utf-8"))
-    existing = next((f for f in feed if f.get("d") == d), None)
+    existing = next((f for f in feed if f.get("d") == d and f.get("type") != "extra"), None)
     if existing and existing.get("topic") and not dry:
         print(f"{d}: already published with details, nothing to do.")
         return 0
@@ -178,10 +178,14 @@ def main():
     if existing and existing.get("r") and existing["r"] != entry["r"]:
         # Francisca chose a different verse by hand: keep her verse, only add the day's details
         entry = {**existing, **{k: v for k, v in entry.items() if k not in ("r", "t")}}
-    feed = [f for f in feed if f.get("d") != d]
+    # keep "Memorize with me" verses Francisca shared; only replace that day's Open Heavens entry
+    feed = [f for f in feed if f.get("d") != d or f.get("type") == "extra"]
     feed.insert(0, entry)
     feed.sort(key=lambda f: f["d"], reverse=True)
-    json.dump(feed[:60], open("verses.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
+    oh = [f for f in feed if f.get("type") != "extra"][:60]
+    extra = [f for f in feed if f.get("type") == "extra"][:40]
+    feed = sorted(oh + extra, key=lambda f: f["d"], reverse=True)
+    json.dump(feed, open("verses.json", "w", encoding="utf-8"), indent=1, ensure_ascii=False)
     open(os.environ.get("GITHUB_OUTPUT", os.devnull), "a").write(f"ref={entry['r']}\n")
     return 0
 
